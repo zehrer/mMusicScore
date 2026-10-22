@@ -12,6 +12,7 @@ Live: https://zehrer.github.io/mMusicScore/
 - **Score**: A4 pages like paper, with title, composer, tempo, clef, key and time signature. Bar lines, system and page breaks are laid out automatically.
 - **Edit in place**: click on the staff to insert a note at that position (a grey preview shows pitch and value); click a note to select it, drag it up or down to change its pitch.
 - **Piano** below the score: click a key to insert that note after the selection, in the current note value (View → Piano hides it).
+- **Note names** above the staff (Names button or View → Note names), in English (C♯, B♭, B) or German naming (Cis, B, H); also in the HTML export when shown.
 - **Lyrics**: one syllable per note under the staff (Lyrics button or **L**). Exported to and imported from MusicXML.
 - **Accidentals** carry through the rest of the measure as usual; the key signature is applied automatically.
 - **Cursor**: the selected note is blue with a highlight, a blinking bar shows where the next note goes (after the selection, or at the end). During **playback** from the selection the sounding note turns red and the score scrolls along. Playback keeps going when you open another song; a small "now playing" window in the corner then follows the playing song (Open jumps back, ■ stops).

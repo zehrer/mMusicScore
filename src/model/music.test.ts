@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { durationForTicks, keyAlter, midi, nearestPitch, parseMelody, resolveAccidentals, splitMeasures } from "./music";
+import { durationForTicks, keyAlter, midi, nearestPitch, noteLabel, parseMelody, resolveAccidentals, splitMeasures } from "./music";
 
 const song = (melody: string, fifths = 0) => ({ notes: parseMelody(melody), beats: 4, beatType: 4, fifths });
 
@@ -42,5 +42,10 @@ describe("music", () => {
     expect(durationForTicks(48)).toEqual({ dur: 2, dots: 1 });
     expect(durationForTicks(16)).toEqual({ dur: 4, dots: 0 });
     expect(durationForTicks(20)).toEqual({ dur: 4, dots: 0 });
+  });
+
+  it("names notes in English and German", () => {
+    expect([noteLabel(34, 0, "en"), noteLabel(34, -1, "en"), noteLabel(31, 1, "en")]).toEqual(["B", "B♭", "F♯"]);
+    expect([noteLabel(34, 0, "de"), noteLabel(34, -1, "de"), noteLabel(31, 1, "de"), noteLabel(30, -1, "de"), noteLabel(33, -1, "de")]).toEqual(["H", "B", "Fis", "Es", "As"]);
   });
 });

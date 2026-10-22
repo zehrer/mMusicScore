@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deleteSong } from "../model/persist";
-import { change, deleteSelection, redo, selectAll, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, undo, useStore } from "../model/store";
+import { change, deleteSelection, redo, selectAll, setNameStyle, setShowNames, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, undo, useStore } from "../model/store";
 import * as A from "./actions";
 import { About, Shortcuts } from "./Dialogs";
 import { MenuList, type MenuItem } from "./Menu";
@@ -63,6 +63,10 @@ export function Header() {
       label: "View",
       items: [
         { label: `${s.showPiano ? "✓ " : "\u2003"}Piano`, action: () => setShowPiano(!s.showPiano) },
+        { label: `${s.showNames ? "✓ " : "\u2003"}Note names`, action: () => setShowNames(!s.showNames) },
+        { heading: "Note names" },
+        { label: `${s.nameStyle === "en" ? "✓ " : "\u2003"}English (C D E F G A B, C♯, B♭)`, action: () => setNameStyle("en") },
+        { label: `${s.nameStyle === "de" ? "✓ " : "\u2003"}German (C D E F G A H, Cis, B)`, action: () => setNameStyle("de") },
         "-",
         { heading: "Zoom" },
         { label: `${s.zoom === "width" ? "✓ " : "\u2003"}Fit width`, action: () => setZoom("width") },

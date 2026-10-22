@@ -1,5 +1,5 @@
 import { DURATION_NAMES, DURATIONS, KEY_NAMES, pitchName, resolveAccidentals } from "../model/music";
-import { editLyric, redo, setDuration, setMeta, setShowPiano, setZoom, stepZoom, ZOOM_STEPS, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
+import { editLyric, redo, setDuration, setMeta, setShowNames, setShowPiano, setZoom, stepZoom, ZOOM_STEPS, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
 import type { Alter } from "../model/types";
 import * as A from "./actions";
 import { ACCIDENTAL, NOTE_ICON, REST } from "./glyphs";
@@ -53,6 +53,9 @@ export function Toolbar() {
         onClick={() => editLyric(s.lyricEdit !== null ? null : (s.sel ?? 0))}
       >
         Lyrics
+      </button>
+      <button className={s.showNames ? "on" : ""} title="Show note names above the staff (naming: View menu)" onClick={() => setShowNames(!s.showNames)}>
+        Names
       </button>
       <button className={s.showPiano ? "on" : ""} title="Show piano" onClick={() => setShowPiano(!s.showPiano)}>
         Piano

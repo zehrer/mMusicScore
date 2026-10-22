@@ -75,7 +75,8 @@ async function fontBase64() {
 export async function exportHTML(song: Song = state().song) {
   // The renderer is only loaded for an export.
   const [{ renderToStaticMarkup }, { StaticScore }, font] = await Promise.all([import("react-dom/server"), import("./StaticScore"), fontBase64()]);
-  const pages = renderToStaticMarkup(createElement(StaticScore, { song }));
+  const { showNames, nameStyle } = state();
+  const pages = renderToStaticMarkup(createElement(StaticScore, { song, names: showNames ? nameStyle : null }));
   download(fileName(song.title, "html"), toHTML(song, pages, font, location.origin + location.pathname), "text/html");
 }
 

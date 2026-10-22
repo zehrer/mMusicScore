@@ -172,6 +172,7 @@ main { flex: 1; min-height: 0; display: flex; }
 .measure-number { font: italic 11px Georgia, serif; fill: var(--muted); }
 .page-number { font: 12px Georgia, serif; fill: var(--muted); }
 .hint { font-size: 14px; fill: var(--muted); }
+.note-names text { font: 600 11px Roboto, -apple-system, "Segoe UI", Arial, sans-serif; fill: #444746; pointer-events: none; }
 .lyric { font: 14px Georgia, "Times New Roman", serif; fill: var(--ink); cursor: text; }
 .lyric-input {
   display: block; width: 100%; height: 100%; border: 1px solid var(--accent); border-radius: 4px; padding: 0 4px;

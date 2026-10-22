@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, yPitch, type SystemLayout } from "../model/layout";
-import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, pitchName } from "../model/music";
+import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, noteLabel, pitchName, type NameStyle, type Resolved } from "../model/music";
 import { auditionAt, editLyric, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
 import { ACCIDENTAL, G, REST } from "./glyphs";
@@ -42,6 +42,7 @@ export function Score() {
   useEffect(() => useStore.setState({ viewZoom: zoom }), [zoom]);
   const input = useStore((s) => s.input);
   const lyricEdit = useStore((s) => s.lyricEdit);
+  const names = useStore((s) => (s.showNames ? s.nameStyle : null));
   const layout = useMemo(() => layoutScore(song), [song]);
   const [hover, setHover] = useState<Hover>(null);
   const drag = useRef<Drag>(null);
@@ -154,6 +155,7 @@ export function Score() {
                 );
               })}
               <Lyrics sys={sys} song={song} noteX={layout.noteX} editing={lyricEdit} />
+              {names && <NoteNames sys={sys} song={song} noteX={layout.noteX} accidentals={layout.accidentals} style={names} />}
               {caret?.sys === sys && (
                 <g className="caret edit-only">
                   <rect x={caret.x - 0.12 * S} y={sys.y - 1.5 * S} width={0.24 * S} height={7 * S} rx={0.12 * S} />
@@ -211,11 +213,11 @@ export function Heading({ song }: { song: Song }) {
         {song.title}
       </text>
       {song.composer && (
-        <text className="song-composer" x={PAGE_W - 64} y={140} textAnchor="end">
+        <text className="song-composer" x={PAGE_W - 64} y={128} textAnchor="end">
           {song.composer}
         </text>
       )}
-      <text className="tempo" x={64} y={150}>
+      <text className="tempo" x={64} y={128}>
         <tspan className="mus-small">{""}</tspan> = {song.tempo}
       </text>
     </g>
@@ -331,6 +333,37 @@ export function NoteGlyph({ n, x, y, sys, bottom, clef, shown }: { n: NoteEvent;
           {G.dot}
         </text>
       ) : null}
+    </g>
+  );
+}
+
+/**
+ * Note names in a row above the staff, each centered over its note. The row moves up when a high
+ * note, its stem or accidental would reach into it.
+ */
+export function NoteNames({ sys, song, noteX, accidentals, style }: { sys: SystemLayout; song: Song; noteX: number[]; accidentals: Resolved[]; style: NameStyle }) {
+  const bottom = BOTTOM_LINE[song.clef];
+  const mid = middleLine(song.clef);
+  let top = sys.y - 0.6 * S;
+  for (let i = sys.start; i < sys.end; i++) {
+    const n = song.notes[i];
+    if (n.rest) continue;
+    const y = pitchY(sys, n.pitch, bottom);
+    const stemTop = n.dur > 1 && n.pitch < mid ? Math.min(y - 3.5 * S, sys.y + 2 * S) : y;
+    top = Math.min(top, stemTop, y - (accidentals[i].shown !== null ? 1.6 * S : 0.6 * S));
+  }
+  const y = top - 0.9 * S;
+  return (
+    <g className="note-names">
+      {song.notes.slice(sys.start, sys.end).map((n, k) => {
+        const i = sys.start + k;
+        if (n.rest) return null;
+        return (
+          <text key={n.id} x={noteX[i] + HEAD_W(n.dur) / 2} y={y} textAnchor="middle">
+            {noteLabel(n.pitch, accidentals[i].actual, style)}
+          </text>
+        );
+      })}
     </g>
   );
 }

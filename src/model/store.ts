@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { clampPitch, emptySong, midi, nearestPitch, newId, resolveAccidentals } from "./music";
+import { clampPitch, emptySong, midi, nearestPitch, newId, resolveAccidentals, type NameStyle } from "./music";
 import { audition } from "./playback";
 import type { Alter, Duration, NoteEvent, Song, SongInfo } from "./types";
 
@@ -21,11 +21,7 @@ function loadZoom(): Zoom {
 
 export function setZoom(zoom: Zoom) {
   set({ zoom });
-  try {
-    localStorage.setItem("zoom", String(zoom));
-  } catch {
-    /* only a convenience */
-  }
+  remember("zoom", String(zoom));
 }
 
 /** Next zoom step up (1) or down (-1) from what is shown now, also when a fit mode is on. */
@@ -62,6 +58,9 @@ interface State {
   viewZoom: number;
   dialog: "about" | "keys" | null;
   showPiano: boolean;
+  /** Note names above the staff, in English or German naming. */
+  showNames: boolean;
+  nameStyle: NameStyle;
   /** Note whose lyric syllable is being typed. */
   lyricEdit: number | null;
   /** Bumped by every change of the song, which schedules an autosave. */
@@ -85,6 +84,8 @@ export const useStore = create<State>(() => ({
   viewZoom: 1,
   dialog: null,
   showPiano: loadFlag("showPiano", true),
+  showNames: loadFlag("showNames", false),
+  nameStyle: loadNameStyle(),
   lyricEdit: null,
   revision: 0,
   savedAt: null,
@@ -100,13 +101,36 @@ function loadFlag(key: string, def: boolean) {
   }
 }
 
-export function setShowPiano(on: boolean) {
-  set({ showPiano: on });
+/** Remembers a view setting in this browser; storage can be unavailable, then it is only kept for now. */
+function remember(key: string, value: string) {
   try {
-    localStorage.setItem("showPiano", on ? "1" : "0");
+    localStorage.setItem(key, value);
   } catch {
     /* only a convenience */
   }
+}
+
+function loadNameStyle(): NameStyle {
+  try {
+    return localStorage.getItem("nameStyle") === "de" ? "de" : "en";
+  } catch {
+    return "en";
+  }
+}
+
+export function setShowPiano(on: boolean) {
+  set({ showPiano: on });
+  remember("showPiano", on ? "1" : "0");
+}
+
+export function setShowNames(on: boolean) {
+  set({ showNames: on });
+  remember("showNames", on ? "1" : "0");
+}
+
+export function setNameStyle(style: NameStyle) {
+  set({ nameStyle: style });
+  remember("nameStyle", style);
 }
 
 /** First and last selected note, or null. */

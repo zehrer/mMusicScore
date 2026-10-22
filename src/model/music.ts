@@ -41,6 +41,17 @@ export function pitchName(pitch: number, alter: number) {
   return STEP_NAMES[step(pitch)] + (alter > 0 ? "♯" : alter < 0 ? "♭" : "") + octave(pitch);
 }
 
+export type NameStyle = "en" | "de";
+const GERMAN_SHARP = ["Cis", "Dis", "Eis", "Fis", "Gis", "Ais", "His"];
+const GERMAN_FLAT = ["Ces", "Des", "Es", "Fes", "Ges", "As", "B"];
+
+/** Name of a sounding note without octave: English "C♯", "B♭", "B"; German "Cis", "B", "H". */
+export function noteLabel(pitch: number, alter: number, style: NameStyle) {
+  const s = step(pitch);
+  if (style === "de") return alter > 0 ? GERMAN_SHARP[s] : alter < 0 ? GERMAN_FLAT[s] : "CDEFGAH"[s];
+  return STEP_NAMES[s] + (alter > 0 ? "♯" : alter < 0 ? "♭" : "");
+}
+
 /** The pitch with the given step that is closest to `near`. */
 export function nearestPitch(s: number, near: number) {
   const base = octave(near) * 7 + s;

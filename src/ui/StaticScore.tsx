@@ -1,13 +1,13 @@
 import { layoutScore, PAGE_H, PAGE_W, pitchY, S } from "../model/layout";
-import { BOTTOM_LINE, pitchName } from "../model/music";
+import { BOTTOM_LINE, pitchName, type NameStyle } from "../model/music";
 import type { Song } from "../model/types";
-import { Heading, Lyrics, NoteGlyph, Staff } from "./Score";
+import { Heading, Lyrics, NoteGlyph, NoteNames, Staff } from "./Score";
 
 /**
  * The score as plain SVG pages for the HTML export: no editing parts, and every note carries its
  * index (data-i) so the exported page can play it and follow along.
  */
-export function StaticScore({ song }: { song: Song }) {
+export function StaticScore({ song, names = null }: { song: Song; names?: NameStyle | null }) {
   const layout = layoutScore(song);
   const bottom = BOTTOM_LINE[song.clef];
   const len = song.notes.length;
@@ -33,6 +33,7 @@ export function StaticScore({ song }: { song: Song }) {
                   );
                 })}
                 <Lyrics sys={sys} song={song} noteX={layout.noteX} editing={null} />
+                {names && <NoteNames sys={sys} song={song} noteX={layout.noteX} accidentals={layout.accidentals} style={names} />}
               </g>
             ))}
           {layout.pages.length > 1 && (

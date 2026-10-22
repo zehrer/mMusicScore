@@ -58,6 +58,7 @@ export function toHTML(song: Song, pages: string, font: string, appUrl: string):
   .mus-small { font-family: Bravura; font-size: 22px; }
   .measure-number { font: italic 11px Georgia, serif; fill: #5f6368; }
   .page-number { font: 12px Georgia, serif; fill: #5f6368; }
+  .note-names text { font: 600 11px -apple-system, "Segoe UI", Roboto, Arial, sans-serif; fill: #444746; }
   .lyric { font: 14px Georgia, "Times New Roman", serif; fill: #111; }
   .note { cursor: pointer; }
   .note:hover { color: #0b57d0; }
