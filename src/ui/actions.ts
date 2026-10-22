@@ -1,3 +1,5 @@
+import { createElement } from "react";
+import { extractSongJSON, toHTML } from "../model/html-export";
 import { download, fileName, fromJSON, libraryToJSON, songToJSON } from "../model/io";
 import { emptySong, newId } from "../model/music";
 import { fromMusicXML, toMusicXML } from "../model/musicxml";
@@ -33,12 +35,15 @@ function pickFile(accept: string): Promise<File | null> {
 
 /** Imports a library or song (JSON) or a MusicXML file as new songs. */
 export async function importFile() {
-  const file = await pickFile(".json,.musicxml,.xml,application/json,application/vnd.recordare.musicxml+xml");
+  const file = await pickFile(".json,.musicxml,.xml,.html,.htm,application/json,application/vnd.recordare.musicxml+xml,text/html");
   if (!file) return;
   try {
     if (/\.mxl$/i.test(file.name)) throw new Error("Compressed MusicXML (.mxl) is not supported – please export as .musicxml.");
     const text = await file.text();
-    const songs = text.trimStart().startsWith("<") ? [fromMusicXML(text)] : fromJSON(text);
+    // An HTML export carries its song as JSON; other markup is MusicXML.
+    const embedded = /<html[\s>]/i.test(text) ? extractSongJSON(text) : null;
+    if (/<html[\s>]/i.test(text) && !embedded) throw new Error("This HTML file was not exported from mMusicScore.");
+    const songs = embedded ? fromJSON(embedded) : text.trimStart().startsWith("<") ? [fromMusicXML(text)] : fromJSON(text);
     await addSongs(songs);
   } catch (e) {
     alert(`Import failed: ${(e as Error).message}`);
@@ -55,6 +60,23 @@ export function exportSongJSON(song: Song = state().song) {
 
 export function exportMusicXML(song: Song = state().song) {
   download(fileName(song.title, "musicxml"), toMusicXML(song), "application/vnd.recordare.musicxml+xml");
+}
+
+/** The Bravura font as base64, for embedding in the HTML export. */
+async function fontBase64() {
+  const { default: url } = await import("@vexflow-fonts/bravura/bravura.woff2?url");
+  const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+/** A single HTML file that shows and plays the song, with a button to open it here again. */
+export async function exportHTML(song: Song = state().song) {
+  // The renderer is only loaded for an export.
+  const [{ renderToStaticMarkup }, { StaticScore }, font] = await Promise.all([import("react-dom/server"), import("./StaticScore"), fontBase64()]);
+  const pages = renderToStaticMarkup(createElement(StaticScore, { song }));
+  download(fileName(song.title, "html"), toHTML(song, pages, font, location.origin + location.pathname), "text/html");
 }
 
 export function printScore() {

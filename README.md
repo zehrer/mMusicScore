@@ -16,6 +16,7 @@ Live: https://zehrer.github.io/mMusicScore/
 - **Accidentals** carry through the rest of the measure as usual; the key signature is applied automatically.
 - **Cursor**: the selected note is blue with a highlight, a blinking bar shows where the next note goes (after the selection, or at the end). During **playback** from the selection the sounding note turns red and the score scrolls along. Playback keeps going when you open another song; a small "now playing" window in the corner then follows the playing song (Open jumps back, ■ stops).
 - **Import / export**: the whole library or single songs as JSON, single songs as **MusicXML** (MuseScore, Finale, Sibelius, Dorico …). Imports JSON and uncompressed MusicXML (first voice of the first part).
+- **HTML export** (File → Export song as HTML): a single file that shows the score in any browser and plays it (▶ Play, or click a note to start there). Its **Open in mMusicScore** button adds the song to the app again; File → Import also reads the file.
 - **Print / PDF** via File → Print; only the score pages are printed.
 
 ## Usage

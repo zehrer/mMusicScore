@@ -76,6 +76,7 @@ export function Library() {
             { label: "Duplicate", action: () => withSong(menu.info, () => A.duplicateSong()) },
             { label: "Export as MusicXML", action: () => withSong(menu.info, () => A.exportMusicXML()) },
             { label: "Export as JSON", action: () => withSong(menu.info, () => A.exportSongJSON()) },
+            { label: "Export as HTML", action: () => withSong(menu.info, () => A.exportHTML()) },
             "-",
             { label: "Delete…", action: () => A.confirmDelete(menu.info.id, menu.info.title) },
           ]}

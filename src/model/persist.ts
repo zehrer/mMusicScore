@@ -1,4 +1,5 @@
 import { del, get, set } from "idb-keyval";
+import { fromJSON } from "./io";
 import { emptySong } from "./music";
 import { sampleSongs } from "./samples";
 import { infoOf, openSong, useStore } from "./store";
@@ -32,6 +33,29 @@ export async function initPersistence() {
     if (s.revision !== prev.revision) schedule();
   });
   addEventListener("pagehide", () => void flush());
+  receiveFromExport();
+}
+
+/**
+ * "Open in mMusicScore" in an HTML export opens this app with #import and sends the embedded song
+ * by postMessage once we report ready. The user confirms before anything is added.
+ */
+export function receiveFromExport() {
+  if (location.hash !== "#import" || !window.opener) return;
+  history.replaceState(null, "", location.pathname + location.search);
+  let done = false;
+  addEventListener("message", async (e: MessageEvent) => {
+    if (done || e.source !== window.opener || e.data?.type !== "mmusicscore-data" || typeof e.data.json !== "string") return;
+    done = true;
+    const name = String(e.data.name || "Imported");
+    if (!confirm(`Add "${name}" from the exported file to the songs in this browser?`)) return;
+    try {
+      await addSongs(fromJSON(e.data.json));
+    } catch (err) {
+      alert(`Import failed: ${(err as Error).message}`);
+    }
+  });
+  window.opener.postMessage({ type: "mmusicscore-ready" }, "*");
 }
 
 let timer: ReturnType<typeof setTimeout> | undefined;

@@ -204,7 +204,7 @@ function caretAt(song: Song, systems: SystemLayout[], noteX: number[], sel: numb
   return { sys, x: next !== null && next > right ? (right + next) / 2 + 0.2 * S : right + 1.2 * S };
 }
 
-function Heading({ song }: { song: Song }) {
+export function Heading({ song }: { song: Song }) {
   return (
     <g className="heading">
       <text className="song-title" x={PAGE_W / 2} y={100} textAnchor="middle">

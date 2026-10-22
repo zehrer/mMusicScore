@@ -24,6 +24,7 @@ export function Header() {
         "-",
         { label: "Export song as MusicXML", action: () => A.exportMusicXML() },
         { label: "Export song as JSON", action: () => A.exportSongJSON() },
+        { label: "Export song as HTML (view and play in any browser)", action: () => A.exportHTML() },
         { label: "Export whole library (JSON)", action: A.exportLibrary },
         "-",
         { label: "Print / save as PDF…", shortcut: `${MOD}P`, action: A.printScore },
