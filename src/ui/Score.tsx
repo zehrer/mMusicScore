@@ -1,11 +1,11 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, yPitch, type SystemLayout } from "../model/layout";
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, pitchName } from "../model/music";
-import { auditionAt, editLyric, insertNote, recordUndo, select, setLyric, updateNote, useStore } from "../model/store";
+import { auditionAt, editLyric, insertNote, playingHere, recordUndo, select, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
 import { ACCIDENTAL, G, REST } from "./glyphs";
 
-const HEAD_W = (dur: Duration) => (dur === 1 ? 1.69 * S : 1.18 * S);
+export const HEAD_W = (dur: Duration) => (dur === 1 ? 1.69 * S : 1.18 * S);
 const LINE = 0.13 * S;
 
 type Hover = { sys: SystemLayout; x: number; pitch: number } | null;
@@ -21,7 +21,7 @@ function svgPoint(e: { clientX: number; clientY: number }, el: Element) {
 export function Score() {
   const song = useStore((s) => s.song);
   const sel = useStore((s) => s.sel);
-  const playing = useStore((s) => s.playing);
+  const playing = useStore(playingHere);
   const zoom = useStore((s) => s.zoom);
   const input = useStore((s) => s.input);
   const lyricEdit = useStore((s) => s.lyricEdit);
@@ -199,7 +199,7 @@ function Heading({ song }: { song: Song }) {
   );
 }
 
-function Staff({ sys, song, final }: { sys: SystemLayout; song: Song; final: boolean }) {
+export function Staff({ sys, song, final }: { sys: SystemLayout; song: Song; final: boolean }) {
   const bottom = BOTTOM_LINE[song.clef];
   const real = sys.measures.filter((m) => !m.extra);
   const realEnd = real.length ? real[real.length - 1].x + real[real.length - 1].width : sys.contentX;
@@ -257,7 +257,7 @@ function Staff({ sys, song, final }: { sys: SystemLayout; song: Song; final: boo
   );
 }
 
-function NoteGlyph({ n, x, y, sys, bottom, clef, shown }: { n: NoteEvent; x: number; y: number; sys: SystemLayout; bottom: number; clef: Song["clef"]; shown: Alter | null }) {
+export function NoteGlyph({ n, x, y, sys, bottom, clef, shown }: { n: NoteEvent; x: number; y: number; sys: SystemLayout; bottom: number; clef: Song["clef"]; shown: Alter | null }) {
   if (n.rest) {
     const ry = n.dur === 1 ? sys.y + S : sys.y + 2 * S;
     return (
@@ -321,7 +321,7 @@ function nextSung(notes: NoteEvent[], i: number, dir: 1 | -1) {
   return null;
 }
 
-function Lyrics({ sys, song, noteX, editing }: { sys: SystemLayout; song: Song; noteX: number[]; editing: number | null }) {
+export function Lyrics({ sys, song, noteX, editing }: { sys: SystemLayout; song: Song; noteX: number[]; editing: number | null }) {
   const y = sys.y + LYRIC_DY;
   const out = [];
   for (let i = sys.start; i < sys.end; i++) {

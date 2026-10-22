@@ -19,9 +19,11 @@ interface State {
   redo: Song[];
   sel: number | null;
   input: InputState;
-  /** Note sounding during playback. */
+  /** Note sounding during playback, an index into `playingSong`. */
   playing: number | null;
   isPlaying: boolean;
+  /** The song as it was when playback started; other songs can be opened meanwhile. */
+  playingSong: Song | null;
   zoom: number;
   dialog: "about" | "keys" | null;
   showPiano: boolean;
@@ -42,6 +44,7 @@ export const useStore = create<State>(() => ({
   input: { dur: 4, dots: 0, rest: false },
   playing: null,
   isPlaying: false,
+  playingSong: null,
   zoom: 1,
   dialog: null,
   showPiano: loadFlag("showPiano", true),
@@ -69,12 +72,15 @@ export function setShowPiano(on: boolean) {
   }
 }
 
+/** The sounding note if playback is of the open song, else null. */
+export const playingHere = (s: State) => (s.playingSong?.id === s.song.id ? s.playing : null);
+
 const get = useStore.getState;
 const set = useStore.setState;
 
 /** Shows `song` with a fresh undo history; `dirty` saves it right away. */
 export function openSong(song: Song, dirty = false) {
-  set((s) => ({ song, undo: [], redo: [], sel: null, playing: null, lyricEdit: null, revision: dirty ? s.revision + 1 : s.revision }));
+  set((s) => ({ song, undo: [], redo: [], sel: null, lyricEdit: null, revision: dirty ? s.revision + 1 : s.revision }));
 }
 
 /**

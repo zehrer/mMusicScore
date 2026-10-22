@@ -67,11 +67,11 @@ export function togglePlay() {
   const { isPlaying, song, sel } = state();
   if (isPlaying) return stop();
   if (!song.notes.length) return;
-  useStore.setState({ isPlaying: true });
+  useStore.setState({ isPlaying: true, playingSong: song, playing: null });
   play(
     song,
     sel ?? 0,
     (i) => useStore.setState({ playing: i }),
-    () => useStore.setState({ playing: null, isPlaying: false }),
+    () => useStore.setState({ playing: null, isPlaying: false, playingSong: null }),
   );
 }

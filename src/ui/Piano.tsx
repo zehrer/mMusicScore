@@ -1,5 +1,5 @@
 import { midi, octave, resolveAccidentals, step } from "../model/music";
-import { insertPitch, useStore } from "../model/store";
+import { insertPitch, playingHere, useStore } from "../model/store";
 import type { Alter } from "../model/types";
 
 const WHITE_W = 26;
@@ -31,7 +31,7 @@ function keys(lowest: number, fifths: number): Key[] {
 export function Piano() {
   const song = useStore((s) => s.song);
   const sel = useStore((s) => s.sel);
-  const playing = useStore((s) => s.playing);
+  const playing = useStore(playingHere);
   const lowest = song.clef === "bass" ? 14 : 21; // C2 or C3
   const resolved = resolveAccidentals(song);
   const lit = new Set(

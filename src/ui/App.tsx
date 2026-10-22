@@ -4,6 +4,7 @@ import { deleteNote, editLyric, insertRest, insertStep, moveSelected, redo, sele
 import * as A from "./actions";
 import { Header } from "./Header";
 import { Library } from "./Library";
+import { MiniPlayer } from "./MiniPlayer";
 import { Piano } from "./Piano";
 import { Score } from "./Score";
 import { Toolbar } from "./Toolbar";
@@ -91,7 +92,10 @@ export function App() {
       <main>
         <Library />
         <div className="editor">
-          <Score />
+          <div className="score-wrap">
+            <Score />
+            <MiniPlayer />
+          </div>
           {showPiano && <Piano />}
         </div>
       </main>
