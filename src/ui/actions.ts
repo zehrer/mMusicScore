@@ -14,11 +14,11 @@ export const MOD = navigator.platform.startsWith("Mac") ? "⌘" : "Ctrl+";
 export const newSong = () => addSong(emptySong());
 
 export function duplicateSong(song: Song = state().song) {
-  return addSong({ ...structuredClone(song), id: newId(), title: `${song.title} (Kopie)`, createdAt: Date.now(), updatedAt: Date.now() });
+  return addSong({ ...structuredClone(song), id: newId(), title: `${song.title} (copy)`, createdAt: Date.now(), updatedAt: Date.now() });
 }
 
 export async function confirmDelete(id: string, title: string) {
-  if (confirm(`„${title}“ endgültig löschen?`)) await deleteSong(id);
+  if (confirm(`Delete "${title}" permanently?`)) await deleteSong(id);
 }
 
 export const addSamples = () => addSongs(sampleSongs());
@@ -36,17 +36,17 @@ export async function importFile() {
   const file = await pickFile(".json,.musicxml,.xml,application/json,application/vnd.recordare.musicxml+xml");
   if (!file) return;
   try {
-    if (/\.mxl$/i.test(file.name)) throw new Error("Komprimiertes MusicXML (.mxl) wird nicht unterstützt – bitte als .musicxml exportieren.");
+    if (/\.mxl$/i.test(file.name)) throw new Error("Compressed MusicXML (.mxl) is not supported – please export as .musicxml.");
     const text = await file.text();
     const songs = text.trimStart().startsWith("<") ? [fromMusicXML(text)] : fromJSON(text);
     await addSongs(songs);
   } catch (e) {
-    alert(`Import fehlgeschlagen: ${(e as Error).message}`);
+    alert(`Import failed: ${(e as Error).message}`);
   }
 }
 
 export async function exportLibrary() {
-  download(`mMusicScore-Bibliothek-${new Date().toISOString().slice(0, 10)}.json`, libraryToJSON(await loadAll()), "application/json");
+  download(`mMusicScore-library-${new Date().toISOString().slice(0, 10)}.json`, libraryToJSON(await loadAll()), "application/json");
 }
 
 export function exportSongJSON(song: Song = state().song) {

@@ -9,57 +9,57 @@ function Dialog({ onClose, className, children }: { onClose: () => void; classNa
       <form method="dialog">
         {children}
         <footer>
-          <button className="primary">Schließen</button>
+          <button className="primary">Close</button>
         </footer>
       </form>
     </dialog>
   );
 }
 
-/** Hilfe → Über: version and how the app keeps data. */
+/** Help → About: version and how the app keeps data. */
 export function About({ onClose }: { onClose: () => void }) {
   return (
     <Dialog onClose={onClose}>
       <h3>mMusicScore</h3>
       <p className="version">
-        Version {__APP_VERSION__} · Build {__APP_BUILD__}
+        Version {__APP_VERSION__} · build {__APP_BUILD__}
       </p>
-      <p>Ein einfaches Notensatzprogramm für einstimmige Melodien, das vollständig im Browser läuft.</p>
-      <h4>Deine Lieder bleiben in diesem Browser</h4>
+      <p>A simple music notation editor for single-line melodies that runs entirely in the browser.</p>
+      <h4>Your songs stay in this browser</h4>
       <p>
-        Es gibt keinen Server und kein Konto. Die Lieder werden nur im Speicher dieses Browsers (IndexedDB) auf diesem Gerät
-        abgelegt; nichts wird hochgeladen.
+        There is no server and no account. Songs are saved only in this browser's storage (IndexedDB) on this device;
+        nothing is uploaded.
       </p>
       <p>
-        Deshalb werden sie auch nicht mit anderen Browsern oder Geräten abgeglichen, und das Löschen der Websitedaten löscht
-        sie. Mit <b>Datei → Ganze Bibliothek exportieren</b> sicherst du sie oder nimmst sie mit.
+        This also means they are not synced to other browsers or devices, and clearing this site's data deletes them. Use{" "}
+        <b>File → Export whole library</b> to keep a backup or to move them.
       </p>
-      <p className="hint">Notenschrift: Bravura von Steinberg (SIL Open Font License).</p>
+      <p className="hint">Music font: Bravura by Steinberg (SIL Open Font License).</p>
     </Dialog>
   );
 }
 
 const KEYS: [string, string][] = [
-  ["Klick ins Notensystem", "Note (oder Pause) an dieser Stelle einfügen"],
-  ["Klick auf eine Note", "Auswählen; ziehen ändert die Tonhöhe"],
-  ["C D E F G A H", "Note nach der Auswahl einfügen, in der nächstgelegenen Oktave"],
-  ["R oder 0", "Pause nach der Auswahl einfügen"],
-  ["3 4 5 6 7", "Sechzehntel, Achtel, Viertel, Halbe, Ganze"],
-  [".", "Punktierung an/aus"],
-  ["↑ ↓", "Tonhöhe um eine Stufe ändern"],
-  [`${MOD}↑ ${MOD}↓`, "Um eine Oktave verschieben"],
-  ["# oder +   b oder -   =", "Kreuz, Be, Auflösungszeichen (erneut drücken entfernt es)"],
-  ["← →", "Vorherige / nächste Note auswählen"],
-  ["⌫ Entf", "Ausgewählte Note löschen"],
-  ["Esc", "Auswahl aufheben"],
-  ["Leertaste", "Abspielen ab Auswahl / Stopp"],
-  [`${MOD}Z  ⇧${MOD}Z`, "Rückgängig / Wiederholen"],
+  ["Click on the staff", "Insert a note (or rest) at that position"],
+  ["Click a note", "Select it; drag to change its pitch"],
+  ["C D E F G A B", "Insert a note after the selection, in the nearest octave"],
+  ["R or 0", "Insert a rest after the selection"],
+  ["3 4 5 6 7", "Sixteenth, eighth, quarter, half, whole"],
+  [".", "Dot on/off"],
+  ["↑ ↓", "Move up / down one step"],
+  [`${MOD}↑ ${MOD}↓`, "Move by an octave"],
+  ["# or +   -   =", "Sharp, flat, natural (press again to remove it)"],
+  ["← →", "Select previous / next note"],
+  ["⌫ Del", "Delete the selected note"],
+  ["Esc", "Clear the selection"],
+  ["Space", "Play from the selection / stop"],
+  [`${MOD}Z  ⇧${MOD}Z`, "Undo / redo"],
 ];
 
 export function Shortcuts({ onClose }: { onClose: () => void }) {
   return (
     <Dialog onClose={onClose} className="keys">
-      <h3>Bedienung</h3>
+      <h3>Keyboard and mouse</h3>
       <table>
         <tbody>
           {KEYS.map(([k, v]) => (

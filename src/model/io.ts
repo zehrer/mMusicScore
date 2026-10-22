@@ -20,7 +20,7 @@ export function fromJSON(text: string): Song[] {
   const data = JSON.parse(text);
   const list: unknown[] = Array.isArray(data) ? data : Array.isArray(data?.songs) ? data.songs : [data];
   const songs = list.map(normalizeSong);
-  if (!songs.length) throw new Error("Die Datei enthält keine Lieder.");
+  if (!songs.length) throw new Error("The file contains no songs.");
   return songs;
 }
 
@@ -29,7 +29,7 @@ const num = (v: unknown, def: number, min: number, max: number) =>
 const str = (v: unknown, def = "") => (typeof v === "string" ? v : def);
 
 export function normalizeSong(raw: unknown): Song {
-  if (!raw || typeof raw !== "object" || !Array.isArray((raw as Song).notes)) throw new Error("Kein gültiges Lied.");
+  if (!raw || typeof raw !== "object" || !Array.isArray((raw as Song).notes)) throw new Error("Not a valid song.");
   const r = raw as Partial<Song>;
   const base = emptySong();
   return {
@@ -68,4 +68,4 @@ export function download(name: string, text: string, type: string) {
 }
 
 /** File name without characters that file systems reject. */
-export const fileName = (title: string, ext: string) => `${title.replace(/[\\/:*?"<>|]+/g, "").trim() || "Lied"}.${ext}`;
+export const fileName = (title: string, ext: string) => `${title.replace(/[\\/:*?"<>|]+/g, "").trim() || "Song"}.${ext}`;

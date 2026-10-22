@@ -44,7 +44,7 @@ export function toMusicXML(song: Song): string {
 <score-partwise version="4.0">
  <work><work-title>${esc(song.title)}</work-title></work>
  <identification>${song.composer ? `<creator type="composer">${esc(song.composer)}</creator>` : ""}<encoding><software>mMusicScore</software></encoding></identification>
- <part-list><score-part id="P1"><part-name>Melodie</part-name></score-part></part-list>
+ <part-list><score-part id="P1"><part-name>Melody</part-name></score-part></part-list>
  <part id="P1">
 ${body}
  </part>
@@ -60,14 +60,14 @@ const TYPES_BY_NAME: Record<string, Duration> = { whole: 1, half: 2, quarter: 4,
  */
 export function fromMusicXML(text: string): Song {
   const doc = new DOMParser().parseFromString(text, "application/xml");
-  if (doc.querySelector("parsererror")) throw new Error("Die MusicXML-Datei ist nicht lesbar.");
+  if (doc.querySelector("parsererror")) throw new Error("The MusicXML file cannot be read.");
   const root = doc.documentElement;
-  if (root.nodeName === "score-timewise") throw new Error("MusicXML im Format „timewise“ wird nicht unterstützt.");
+  if (root.nodeName === "score-timewise") throw new Error("Timewise MusicXML is not supported.");
   const part = root.querySelector("part");
-  if (!part) throw new Error("Die Datei enthält keine Stimme.");
+  if (!part) throw new Error("The file contains no part.");
   const txt = (el: Element | null | undefined, sel: string) => el?.querySelector(sel)?.textContent?.trim() ?? "";
 
-  const song = emptySong(txt(root, "work > work-title") || txt(root, "movement-title") || "Importiert");
+  const song = emptySong(txt(root, "work > work-title") || txt(root, "movement-title") || "Imported");
   song.composer = txt(root, 'identification > creator[type="composer"]');
   let divisions = 1;
   let voice: string | null = null;

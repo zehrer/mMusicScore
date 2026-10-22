@@ -24,12 +24,12 @@ export function Library() {
   return (
     <aside className="library">
       <div className="library-head">
-        <h2>Lieder</h2>
-        <button className="new" onClick={A.newSong} title="Neues Lied">
-          ＋ Neu
+        <h2>Songs</h2>
+        <button className="new" onClick={A.newSong} title="New song">
+          ＋ New
         </button>
       </div>
-      <input className="search" type="search" placeholder="Suchen…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <input className="search" type="search" placeholder="Search…" value={query} onChange={(e) => setQuery(e.target.value)} />
       <ul>
         {shown.map((s) => (
           <li
@@ -41,14 +41,14 @@ export function Library() {
               setMenu({ info: s, x: e.clientX, y: e.clientY });
             }}
           >
-            <div className="song-name">{s.title || "Ohne Titel"}</div>
+            <div className="song-name">{s.title || "Untitled"}</div>
             <div className="song-meta">
               {s.composer && <span>{s.composer} · </span>}
               {new Date(s.updatedAt).toLocaleDateString()}
             </div>
             <button
               className="more"
-              title="Weitere Aktionen"
+              title="More actions"
               onClick={(e) => {
                 e.stopPropagation();
                 const r = e.currentTarget.getBoundingClientRect();
@@ -59,12 +59,12 @@ export function Library() {
             </button>
           </li>
         ))}
-        {!shown.length && <li className="empty">{q ? "Keine Treffer" : "Noch keine Lieder"}</li>}
+        {!shown.length && <li className="empty">{q ? "No matches" : "No songs yet"}</li>}
       </ul>
       <div className="library-foot">
-        <button onClick={A.importFile}>Importieren…</button>
+        <button onClick={A.importFile}>Import…</button>
         <button onClick={A.exportLibrary} disabled={!songs.length}>
-          Exportieren
+          Export
         </button>
       </div>
       {menu && (
@@ -72,12 +72,12 @@ export function Library() {
           at={menu}
           onClose={() => setMenu(null)}
           items={[
-            { label: "Öffnen", action: () => openSaved(menu.info.id) },
-            { label: "Duplizieren", action: () => withSong(menu.info, () => A.duplicateSong()) },
-            { label: "Exportieren als MusicXML", action: () => withSong(menu.info, () => A.exportMusicXML()) },
-            { label: "Exportieren als JSON", action: () => withSong(menu.info, () => A.exportSongJSON()) },
+            { label: "Open", action: () => openSaved(menu.info.id) },
+            { label: "Duplicate", action: () => withSong(menu.info, () => A.duplicateSong()) },
+            { label: "Export as MusicXML", action: () => withSong(menu.info, () => A.exportMusicXML()) },
+            { label: "Export as JSON", action: () => withSong(menu.info, () => A.exportSongJSON()) },
             "-",
-            { label: "Löschen…", action: () => A.confirmDelete(menu.info.id, menu.info.title) },
+            { label: "Delete…", action: () => A.confirmDelete(menu.info.id, menu.info.title) },
           ]}
         />
       )}

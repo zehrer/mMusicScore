@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
-// Shown in Hilfe → Über.
+// Shown in Help → About.
 const version = JSON.parse(readFileSync("package.json", "utf8")).version;
 const commit = (() => {
   try {

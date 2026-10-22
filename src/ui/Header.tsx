@@ -14,57 +14,57 @@ export function Header() {
 
   const menus: { label: string; items: MenuItem[] }[] = [
     {
-      label: "Datei",
+      label: "File",
       items: [
-        { label: "Neues Lied", shortcut: "⌥N", action: A.newSong },
-        { label: "Lied duplizieren", action: () => A.duplicateSong() },
+        { label: "New song", shortcut: "⌥N", action: A.newSong },
+        { label: "Duplicate song", action: () => A.duplicateSong() },
         "-",
-        { label: "Importieren (JSON, MusicXML)…", shortcut: `${MOD}O`, action: A.importFile },
-        { label: "Beispiellieder hinzufügen", action: A.addSamples },
+        { label: "Import (JSON, MusicXML)…", shortcut: `${MOD}O`, action: A.importFile },
+        { label: "Add sample songs", action: A.addSamples },
         "-",
-        { label: "Lied exportieren als MusicXML", action: () => A.exportMusicXML() },
-        { label: "Lied exportieren als JSON", action: () => A.exportSongJSON() },
-        { label: "Ganze Bibliothek exportieren (JSON)", action: A.exportLibrary },
+        { label: "Export song as MusicXML", action: () => A.exportMusicXML() },
+        { label: "Export song as JSON", action: () => A.exportSongJSON() },
+        { label: "Export whole library (JSON)", action: A.exportLibrary },
         "-",
-        { label: "Drucken / als PDF sichern…", shortcut: `${MOD}P`, action: A.printScore },
+        { label: "Print / save as PDF…", shortcut: `${MOD}P`, action: A.printScore },
         "-",
         {
-          label: "Lied löschen…",
+          label: "Delete song…",
           disabled: !saved,
-          action: () => confirm(`„${s.song.title}“ endgültig löschen?`) && deleteSong(s.song.id),
+          action: () => confirm(`Delete "${s.song.title}" permanently?`) && deleteSong(s.song.id),
         },
       ],
     },
     {
-      label: "Bearbeiten",
+      label: "Edit",
       items: [
-        { label: "Rückgängig", shortcut: `${MOD}Z`, disabled: !s.undo.length, action: undo },
-        { label: "Wiederholen", shortcut: `⇧${MOD}Z`, disabled: !s.redo.length, action: redo },
+        { label: "Undo", shortcut: `${MOD}Z`, disabled: !s.undo.length, action: undo },
+        { label: "Redo", shortcut: `⇧${MOD}Z`, disabled: !s.redo.length, action: redo },
         "-",
-        { label: "Note löschen", shortcut: "⌫", disabled: s.sel === null, action: () => deleteNote(s.sel!) },
+        { label: "Delete note", shortcut: "⌫", disabled: s.sel === null, action: () => deleteNote(s.sel!) },
         {
-          label: "Alle Noten löschen…",
+          label: "Delete all notes…",
           disabled: !s.song.notes.length,
-          action: () => confirm("Alle Noten dieses Liedes löschen?") && change((song) => ({ ...song, notes: [] }), { sel: null }),
+          action: () => confirm("Delete all notes of this song?") && change((song) => ({ ...song, notes: [] }), { sel: null }),
         },
       ],
     },
     {
-      label: "Wiedergabe",
-      items: [{ label: s.isPlaying ? "Stopp" : s.sel !== null ? "Ab Auswahl abspielen" : "Abspielen", shortcut: "Leertaste", disabled: !s.song.notes.length, action: A.togglePlay }],
+      label: "Playback",
+      items: [{ label: s.isPlaying ? "Stop" : s.sel !== null ? "Play from selection" : "Play", shortcut: "Space", disabled: !s.song.notes.length, action: A.togglePlay }],
     },
     {
-      label: "Ansicht",
+      label: "View",
       items: [50, 75, 100, 125, 150, 200].map((z) => ({
         label: `${Math.round(s.zoom * 100) === z ? "✓ " : " "}${z} %`,
         action: () => useStore.setState({ zoom: z / 100 }),
       })),
     },
     {
-      label: "Hilfe",
+      label: "Help",
       items: [
-        { label: "Tastenkürzel", shortcut: "?", action: () => useStore.setState({ dialog: "keys" }) },
-        { label: "Über mMusicScore", action: () => useStore.setState({ dialog: "about" }) },
+        { label: "Keyboard shortcuts", shortcut: "?", action: () => useStore.setState({ dialog: "keys" }) },
+        { label: "About mMusicScore", action: () => useStore.setState({ dialog: "about" }) },
       ],
     },
   ];
@@ -79,8 +79,8 @@ export function Header() {
       </svg>
       <div className="title-block">
         <div className="title-row">
-          <input className="title" value={s.song.title} onChange={(e) => setMeta({ title: e.target.value })} aria-label="Titel" />
-          <input className="composer" value={s.song.composer} placeholder="Komponist" onChange={(e) => setMeta({ composer: e.target.value })} aria-label="Komponist" />
+          <input className="title" value={s.song.title} onChange={(e) => setMeta({ title: e.target.value })} aria-label="Title" />
+          <input className="composer" value={s.song.composer} placeholder="Composer" onChange={(e) => setMeta({ composer: e.target.value })} aria-label="Composer" />
         </div>
         <nav className="menubar">
           {menus.map((m, i) => (
@@ -93,8 +93,8 @@ export function Header() {
           ))}
         </nav>
       </div>
-      <span className="save-status" title={s.saveError ?? "Wird automatisch in diesem Browser gespeichert"}>
-        {s.saveError ? "⚠ Speichern fehlgeschlagen" : s.savedAt ? `Gespeichert ${s.savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Lokal im Browser"}
+      <span className="save-status" title={s.saveError ?? "Saved automatically in this browser"}>
+        {s.saveError ? "⚠ Saving failed" : s.savedAt ? `Saved ${s.savedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Local in your browser"}
       </span>
       {s.dialog === "about" && <About onClose={() => useStore.setState({ dialog: null })} />}
       {s.dialog === "keys" && <Shortcuts onClose={() => useStore.setState({ dialog: null })} />}

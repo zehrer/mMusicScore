@@ -120,9 +120,9 @@ export function parseMelody(src: string): NoteEvent[] {
   let last = 28 + 4;
   for (const tok of src.split(/[\s|]+/).filter(Boolean)) {
     const m = /^(?:([A-G])([#bn]?)(\d)|r)(?:\/(\d+))?(\.)?$/.exec(tok);
-    if (!m) throw new Error(`Unbekannte Note: ${tok}`);
+    if (!m) throw new Error(`Unknown note: ${tok}`);
     const dur = Number(m[4] ?? 4) as Duration;
-    if (!DURATIONS.includes(dur)) throw new Error(`Unbekannte Dauer: ${tok}`);
+    if (!DURATIONS.includes(dur)) throw new Error(`Unknown duration: ${tok}`);
     const n: NoteEvent = { id: newId(), dur, pitch: last };
     if (m[5]) n.dots = 1;
     if (m[1]) {
@@ -135,26 +135,26 @@ export function parseMelody(src: string): NoteEvent[] {
 }
 
 export const KEY_NAMES: Record<number, string> = {
-  [-7]: "Ces-Dur / as-Moll",
-  [-6]: "Ges-Dur / es-Moll",
-  [-5]: "Des-Dur / b-Moll",
-  [-4]: "As-Dur / f-Moll",
-  [-3]: "Es-Dur / c-Moll",
-  [-2]: "B-Dur / g-Moll",
-  [-1]: "F-Dur / d-Moll",
-  0: "C-Dur / a-Moll",
-  1: "G-Dur / e-Moll",
-  2: "D-Dur / h-Moll",
-  3: "A-Dur / fis-Moll",
-  4: "E-Dur / cis-Moll",
-  5: "H-Dur / gis-Moll",
-  6: "Fis-Dur / dis-Moll",
-  7: "Cis-Dur / ais-Moll",
+  [-7]: "C♭ major / A♭ minor",
+  [-6]: "G♭ major / E♭ minor",
+  [-5]: "D♭ major / B♭ minor",
+  [-4]: "A♭ major / F minor",
+  [-3]: "E♭ major / C minor",
+  [-2]: "B♭ major / G minor",
+  [-1]: "F major / D minor",
+  0: "C major / A minor",
+  1: "G major / E minor",
+  2: "D major / B minor",
+  3: "A major / F♯ minor",
+  4: "E major / C♯ minor",
+  5: "B major / G♯ minor",
+  6: "F♯ major / D♯ minor",
+  7: "C♯ major / A♯ minor",
 };
 
-export const DURATION_NAMES: Record<Duration, string> = { 1: "Ganze", 2: "Halbe", 4: "Viertel", 8: "Achtel", 16: "Sechzehntel" };
+export const DURATION_NAMES: Record<Duration, string> = { 1: "Whole", 2: "Half", 4: "Quarter", 8: "Eighth", 16: "Sixteenth" };
 
-export function emptySong(title = "Neues Lied"): Song {
+export function emptySong(title = "New song"): Song {
   const now = Date.now();
   return { id: newId(), title, composer: "", tempo: 100, beats: 4, beatType: 4, fifths: 0, clef: "treble", notes: [], createdAt: now, updatedAt: now };
 }

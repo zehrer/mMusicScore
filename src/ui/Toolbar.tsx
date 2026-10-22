@@ -21,42 +21,42 @@ export function Toolbar() {
 
   return (
     <div className="toolbar">
-      <button title={`Rückgängig (${MOD}Z)`} disabled={!s.undo.length} onClick={undo}>
+      <button title={`Undo (${MOD}Z)`} disabled={!s.undo.length} onClick={undo}>
         ↶
       </button>
-      <button title={`Wiederholen (⇧${MOD}Z)`} disabled={!s.redo.length} onClick={redo}>
+      <button title={`Redo (⇧${MOD}Z)`} disabled={!s.redo.length} onClick={redo}>
         ↷
       </button>
       <span className="sep" />
-      <div className="segmented" role="group" aria-label="Notenwert">
+      <div className="segmented" role="group" aria-label="Note value">
         {DURATIONS.map((d, k) => (
           <button key={d} className={`mus-btn${input.dur === d ? " on" : ""}`} title={`${DURATION_NAMES[d]} (${7 - k})`} onClick={() => setDuration(d)}>
             <span className="mus-icon">{input.rest ? REST[d] : NOTE_ICON[d]}</span>
           </button>
         ))}
       </div>
-      <button className={`mus-btn${input.dots ? " on" : ""}`} title="Punktierung (.)" onClick={toggleDot}>
+      <button className={`mus-btn${input.dots ? " on" : ""}`} title="Dot (.)" onClick={toggleDot}>
         <span className="dot-icon">•</span>
       </button>
-      <button className={`mus-btn${input.rest ? " on" : ""}`} title="Pause statt Note (R)" onClick={toggleRest}>
+      <button className={`mus-btn${input.rest ? " on" : ""}`} title="Rest instead of note (R)" onClick={toggleRest}>
         <span className="mus-icon">{REST[4]}</span>
       </button>
       <span className="sep" />
-      {alterBtn(1, "Kreuz", "#")}
-      {alterBtn(-1, "Be", "b")}
-      {alterBtn(0, "Auflösungszeichen", "=")}
+      {alterBtn(1, "Sharp", "#")}
+      {alterBtn(-1, "Flat", "-")}
+      {alterBtn(0, "Natural", "=")}
       <span className="sep" />
-      <button className={`play${s.isPlaying ? " on" : ""}`} title="Abspielen / Stopp (Leertaste)" disabled={!song.notes.length} onClick={A.togglePlay}>
-        {s.isPlaying ? "■ Stopp" : "▶ Abspielen"}
+      <button className={`play${s.isPlaying ? " on" : ""}`} title="Play / stop (Space)" disabled={!song.notes.length} onClick={A.togglePlay}>
+        {s.isPlaying ? "■ Stop" : "▶ Play"}
       </button>
       <span className="sep" />
-      <label title="Schlüssel">
+      <label title="Clef">
         <select value={song.clef} onChange={(e) => setMeta({ clef: e.target.value as "treble" | "bass" })}>
-          <option value="treble">Violinschlüssel</option>
-          <option value="bass">Bassschlüssel</option>
+          <option value="treble">Treble clef</option>
+          <option value="bass">Bass clef</option>
         </select>
       </label>
-      <label title="Tonart">
+      <label title="Key signature">
         <select value={song.fifths} onChange={(e) => setMeta({ fifths: Number(e.target.value) })}>
           {Object.entries(KEY_NAMES)
             .sort((a, b) => Number(a[0]) - Number(b[0]))
@@ -67,7 +67,7 @@ export function Toolbar() {
             ))}
         </select>
       </label>
-      <label title="Taktart">
+      <label title="Time signature">
         <select
           value={time}
           onChange={(e) => {
@@ -80,7 +80,7 @@ export function Toolbar() {
           ))}
         </select>
       </label>
-      <label className="tempo-input" title="Tempo (Viertel pro Minute)">
+      <label className="tempo-input" title="Tempo (quarter notes per minute)">
         ♩=
         <input
           type="number"
@@ -94,7 +94,7 @@ export function Toolbar() {
         />
       </label>
       <span className="spacer" />
-      <span className="sel-info">{n ? `${n.rest ? "Pause" : pitchName(n.pitch, resolveAccidentals(song)[s.sel!].actual)} · ${DURATION_NAMES[n.dur]}${n.dots ? " punktiert" : ""}` : ""}</span>
+      <span className="sel-info">{n ? `${n.rest ? "Rest" : pitchName(n.pitch, resolveAccidentals(song)[s.sel!].actual)} · ${DURATION_NAMES[n.dur]}${n.dots ? " dotted" : ""}` : ""}</span>
     </div>
   );
 }

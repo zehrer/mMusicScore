@@ -7,8 +7,8 @@ import { Library } from "./Library";
 import { Score } from "./Score";
 import { Toolbar } from "./Toolbar";
 
-/** German note names: H is the B natural, "b" is the flat sign. */
-const STEP_KEYS: Record<string, number> = { c: 0, d: 1, e: 2, f: 3, g: 4, a: 5, h: 6 };
+/** Note names; H is accepted as B, as in German. */
+const STEP_KEYS: Record<string, number> = { c: 0, d: 1, e: 2, f: 3, g: 4, a: 5, b: 6, h: 6 };
 
 function onKey(e: KeyboardEvent) {
   if ((e.target instanceof Element && e.target.closest("input, select, textarea, dialog")) || e.defaultPrevented) return;
@@ -47,7 +47,6 @@ function onKey(e: KeyboardEvent) {
     case "+":
       return void (toggleAlter(1), handled());
     case "-":
-    case "b":
       return void (toggleAlter(-1), handled());
     case "=":
       return void (toggleAlter(0), handled());

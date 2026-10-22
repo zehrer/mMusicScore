@@ -105,7 +105,7 @@ export function Score() {
                       onPointerUp={onNoteUp}
                       onPointerEnter={() => setHover(null)}
                     >
-                      <title>{n.rest ? "Pause" : pitchName(n.pitch, layout.accidentals[i].actual)}</title>
+                      <title>{n.rest ? "Rest" : pitchName(n.pitch, layout.accidentals[i].actual)}</title>
                     </rect>
                   </g>
                 );
@@ -127,7 +127,7 @@ export function Score() {
           ))}
           {pi === 0 && !song.notes.length && (
             <text className="hint edit-only" x={PAGE_W / 2} y={systems[0].y + 9 * S} textAnchor="middle">
-              Ins Notensystem klicken oder Buchstaben C–H tippen, um Noten einzufügen
+              Click on the staff or type the letters A–G to enter notes
             </text>
           )}
           <text className="page-number" x={PAGE_W / 2} y={PAGE_H - 40} textAnchor="middle">
