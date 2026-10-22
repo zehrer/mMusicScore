@@ -108,6 +108,10 @@ main { flex: 1; min-height: 0; display: flex; position: relative; }
 .view-tools button.on { background: var(--accent-soft); }
 .view-bar .edit-btn { margin-left: auto; color: var(--accent); font-weight: 500; }
 .toolbar .view-btn { color: var(--accent); font-weight: 500; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; }
+.toolbar > .icon-btn { width: 34px; padding: 0; border-radius: 50%; }
+.view-tools .icon-btn { padding: 6px 8px; }
+.icon { display: block; flex: none; }
 /* View mode shows no editing aids, only the selection and the sounding note. */
 .score.viewing .edit-only:not(.highlight) { display: none; }
 .score.viewing .note { cursor: pointer; }

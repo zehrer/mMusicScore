@@ -3,6 +3,7 @@ import { editLyric, redo, setMode, setDuration, setMeta, setShowNames, setShowPi
 import type { Alter } from "../model/types";
 import * as A from "./actions";
 import { ACCIDENTAL, NOTE_ICON, REST } from "./glyphs";
+import { LyricsIcon, NamesIcon, PianoIcon } from "./icons";
 import { MOD } from "./actions";
 
 const TIMES = ["2/4", "3/4", "4/4", "5/4", "6/8", "3/8", "9/8", "12/8", "2/2"];
@@ -51,18 +52,19 @@ export function Toolbar() {
       {alterBtn(0, "Natural", "=")}
       <span className="sep" />
       <button
-        className={s.lyricEdit !== null ? "on" : ""}
+        className={`icon-btn${s.lyricEdit !== null ? " on" : ""}`}
         title="Lyrics: type text under the notes (L)"
+        aria-label="Lyrics"
         disabled={!song.notes.length}
         onClick={() => editLyric(s.lyricEdit !== null ? null : (s.sel ?? 0))}
       >
-        Lyrics
+        <LyricsIcon />
       </button>
-      <button className={s.showNames ? "on" : ""} title="Show note names above the staff (naming: View menu)" onClick={() => setShowNames(!s.showNames)}>
-        Names
+      <button className={`icon-btn${s.showNames ? " on" : ""}`} title="Note names above the staff (naming: View menu)" aria-label="Note names" onClick={() => setShowNames(!s.showNames)}>
+        <NamesIcon />
       </button>
-      <button className={s.showPiano ? "on" : ""} title="Show piano" onClick={() => setShowPiano(!s.showPiano)}>
-        Piano
+      <button className={`icon-btn${s.showPiano ? " on" : ""}`} title="Piano" aria-label="Piano" onClick={() => setShowPiano(!s.showPiano)}>
+        <PianoIcon />
       </button>
       <span className="sep" />
       <button className={`play${s.isPlaying ? " on" : ""}`} title="Play / stop (Space)" disabled={!song.notes.length} onClick={A.togglePlay}>

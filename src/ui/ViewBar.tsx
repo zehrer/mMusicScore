@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { openSaved } from "../model/persist";
 import { hasSections, setMode, setShowNames, setView, setZoom, useStore } from "../model/store";
 import * as A from "./actions";
+import { NamesIcon } from "./icons";
 
 /** Browser full screen, where pages may use it (not on iPhone). */
 function useFullscreen() {
@@ -58,8 +59,8 @@ export function ViewBar() {
             Expanded
           </button>
         )}
-        <button className={s.showNames ? "on" : ""} title="Note names" onClick={() => setShowNames(!s.showNames)}>
-          Names
+        <button className={`icon-btn${s.showNames ? " on" : ""}`} title="Note names" aria-label="Note names" onClick={() => setShowNames(!s.showNames)}>
+          <NamesIcon />
         </button>
         {full.available && (
           <button className={full.on ? "on" : ""} title={full.on ? "Leave full screen (Esc)" : "Full screen"} onClick={full.toggle}>
