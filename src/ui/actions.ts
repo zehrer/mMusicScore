@@ -4,8 +4,8 @@ import { fromMusicXML, toMusicXML } from "../model/musicxml";
 import { addSong, addSongs, deleteSong, loadAll } from "../model/persist";
 import { play, stop } from "../model/playback";
 import { sampleSongs } from "../model/samples";
-import { useStore } from "../model/store";
-import type { Song } from "../model/types";
+import { deleteSelection, pasteNotes, selectedNotes, useStore } from "../model/store";
+import type { NoteEvent, Song } from "../model/types";
 
 const state = useStore.getState;
 
@@ -74,4 +74,103 @@ export function togglePlay() {
     (i) => useStore.setState({ playing: i }),
     () => useStore.setState({ playing: null, isPlaying: false, playingSong: null }),
   );
+}
+
+// --- Copy & paste ---------------------------------------------------------------------------
+// Notes travel as JSON text on the system clipboard, so they can be pasted into another song or
+// tab. A copy in memory covers browsers that only fire clipboard events in text fields (Safari).
+
+const CLIP_FORMAT = "mmusicscore-notes";
+let clip: NoteEvent[] = [];
+
+const clipText = (notes: NoteEvent[]) => JSON.stringify({ format: CLIP_FORMAT, notes });
+
+function parseClip(text: string): NoteEvent[] | null {
+  try {
+    const data = JSON.parse(text);
+    return data?.format === CLIP_FORMAT && Array.isArray(data.notes) ? fromJSON(JSON.stringify({ notes: data.notes }))[0].notes : null;
+  } catch {
+    return null;
+  }
+}
+
+export function copySelection(cut = false) {
+  const notes = selectedNotes();
+  if (!notes.length) return;
+  clip = notes;
+  navigator.clipboard?.writeText(clipText(notes)).catch(() => {});
+  if (cut) deleteSelection();
+}
+
+// Set when the browser fired its own clipboard event for a shortcut, so the fallback stays out.
+let handled = false;
+/** Notes a Cmd+C / Cmd+X just took; the copy or cut event that follows only puts them on the clipboard. */
+let fromShortcut: NoteEvent[] | null = null;
+
+/**
+ * Cmd+C / Cmd+X: the selection is taken (and cut) right away, so a quick Esc or click afterwards
+ * cannot change what is copied. The copy or cut event then puts it on the system clipboard;
+ * without that event (some browsers fire it only in text fields) the clipboard API is used.
+ */
+export function copySoon(cut: boolean) {
+  const notes = selectedNotes();
+  if (!notes.length) return;
+  clip = fromShortcut = notes;
+  handled = false;
+  if (cut) deleteSelection();
+  setTimeout(() => {
+    if (!handled) navigator.clipboard?.writeText(clipText(notes)).catch(() => {});
+    fromShortcut = null;
+  }, 60);
+}
+
+/** Cmd+V: the paste event brings the system clipboard; without one, the copy in memory is used. */
+export function pasteSoon() {
+  handled = false;
+  setTimeout(() => !handled && pasteNotes(clip), 60);
+}
+
+/** Edit → Paste: reads the system clipboard where the browser allows it, else the copy in memory. */
+export async function pasteFromMenu() {
+  try {
+    const notes = parseClip(await navigator.clipboard.readText());
+    if (notes) return pasteNotes(notes);
+  } catch {
+    /* no permission: fall back */
+  }
+  pasteNotes(clip);
+}
+
+function onPaste(e: ClipboardEvent) {
+  if (e.target instanceof Element && e.target.closest("input, textarea, select")) return;
+  handled = true;
+  e.preventDefault();
+  pasteNotes(parseClip(e.clipboardData?.getData("text/plain") ?? "") ?? clip);
+}
+
+function onCopy(e: ClipboardEvent, cut: boolean) {
+  if (e.target instanceof Element && e.target.closest("input, textarea, select")) return;
+  const notes = fromShortcut ?? selectedNotes();
+  if (!notes.length) return;
+  handled = true;
+  e.preventDefault();
+  e.clipboardData?.setData("text/plain", clipText(notes));
+  clip = notes;
+  // A shortcut already cut; only the menu's own cut (e.g. Safari's Edit menu) deletes here.
+  if (cut && !fromShortcut) deleteSelection();
+  fromShortcut = null;
+}
+
+/** Clipboard events for the score; returns a function that removes them. */
+export function listenClipboard() {
+  const copy = (e: ClipboardEvent) => onCopy(e, false);
+  const cut = (e: ClipboardEvent) => onCopy(e, true);
+  document.addEventListener("copy", copy);
+  document.addEventListener("cut", cut);
+  document.addEventListener("paste", onPaste);
+  return () => {
+    document.removeEventListener("copy", copy);
+    document.removeEventListener("cut", cut);
+    document.removeEventListener("paste", onPaste);
+  };
 }

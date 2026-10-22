@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { DURATIONS } from "../model/music";
-import { deleteNote, editLyric, insertRest, insertStep, moveSelected, redo, select, setDuration, toggleAlter, toggleDot, undo, useStore } from "../model/store";
+import { deleteSelection, editLyric, insertRest, selectAll, insertStep, moveSelected, redo, select, setDuration, toggleAlter, toggleDot, undo, useStore } from "../model/store";
 import * as A from "./actions";
 import { Header } from "./Header";
 import { Library } from "./Library";
@@ -24,6 +24,11 @@ function onKey(e: KeyboardEvent) {
     else if (k === "y") (redo(), handled());
     else if (k === "o") (A.importFile(), handled());
     else if (k === "p") (A.printScore(), handled());
+    else if (k === "a") (selectAll(), handled());
+    // No preventDefault: the browser's copy, cut and paste events carry the system clipboard.
+    else if (k === "c") A.copySoon(false);
+    else if (k === "x") A.copySoon(true);
+    else if (k === "v") A.pasteSoon();
     else if (k === "ArrowUp") (moveSelected(7), handled());
     else if (k === "ArrowDown") (moveSelected(-7), handled());
     return;
@@ -57,14 +62,14 @@ function onKey(e: KeyboardEvent) {
     case "ArrowDown":
       return void (moveSelected(-1), handled());
     case "ArrowLeft":
-      if (song.notes.length) select(sel === null ? song.notes.length - 1 : Math.max(0, sel - 1));
+      if (song.notes.length) select(sel === null ? song.notes.length - 1 : Math.max(0, sel - 1), e.shiftKey);
       return handled();
     case "ArrowRight":
-      if (song.notes.length) select(sel === null ? 0 : Math.min(song.notes.length - 1, sel + 1));
+      if (song.notes.length) select(sel === null ? 0 : Math.min(song.notes.length - 1, sel + 1), e.shiftKey);
       return handled();
     case "Backspace":
     case "Delete":
-      if (sel !== null) deleteNote(sel);
+      deleteSelection();
       return handled();
     case "Escape":
       return void select(null);
@@ -83,7 +88,11 @@ export function App() {
   const showPiano = useStore((s) => s.showPiano);
   useEffect(() => {
     addEventListener("keydown", onKey);
-    return () => removeEventListener("keydown", onKey);
+    const unlisten = A.listenClipboard();
+    return () => {
+      removeEventListener("keydown", onKey);
+      unlisten();
+    };
   }, []);
   return (
     <div className="app">

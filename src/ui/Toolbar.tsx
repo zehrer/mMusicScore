@@ -1,5 +1,5 @@
 import { DURATION_NAMES, DURATIONS, KEY_NAMES, pitchName, resolveAccidentals } from "../model/music";
-import { editLyric, redo, setDuration, setMeta, setShowPiano, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
+import { editLyric, redo, setDuration, setMeta, setShowPiano, setZoom, stepZoom, ZOOM_STEPS, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
 import type { Alter } from "../model/types";
 import * as A from "./actions";
 import { ACCIDENTAL, NOTE_ICON, REST } from "./glyphs";
@@ -105,8 +105,34 @@ export function Toolbar() {
           }}
         />
       </label>
+      <span className="sep" />
+      <div className="zoom" role="group" aria-label="Zoom">
+        <button title="Zoom out" disabled={s.viewZoom <= ZOOM_STEPS[0] + 0.01} onClick={() => stepZoom(-1)}>
+          −
+        </button>
+        <select
+          title="Zoom"
+          value={String(s.zoom)}
+          onChange={(e) => {
+            const v = e.target.value;
+            setZoom(v === "width" || v === "page" ? v : Number(v));
+          }}
+        >
+          <option value="width">Fit width{s.zoom === "width" ? ` · ${Math.round(s.viewZoom * 100)} %` : ""}</option>
+          <option value="page">Fit page{s.zoom === "page" ? ` · ${Math.round(s.viewZoom * 100)} %` : ""}</option>
+          {ZOOM_STEPS.map((z) => (
+            <option key={z} value={String(z)}>
+              {z * 100} %
+            </option>
+          ))}
+          {typeof s.zoom === "number" && !ZOOM_STEPS.includes(s.zoom) && <option value={String(s.zoom)}>{Math.round(s.zoom * 100)} %</option>}
+        </select>
+        <button title="Zoom in" disabled={s.viewZoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1] - 0.01} onClick={() => stepZoom(1)}>
+          +
+        </button>
+      </div>
       <span className="spacer" />
-      <span className="sel-info">{n ? `${n.rest ? "Rest" : pitchName(n.pitch, resolveAccidentals(song)[s.sel!].actual)} · ${DURATION_NAMES[n.dur]}${n.dots ? " dotted" : ""}` : ""}</span>
+      <span className="sel-info">{s.anchor !== null && s.anchor !== s.sel ? `${Math.abs(s.anchor - s.sel!) + 1} notes selected` : n ? `${n.rest ? "Rest" : pitchName(n.pitch, resolveAccidentals(song)[s.sel!].actual)} · ${DURATION_NAMES[n.dur]}${n.dots ? " dotted" : ""}` : ""}</span>
     </div>
   );
 }

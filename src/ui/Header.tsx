@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deleteSong } from "../model/persist";
-import { change, deleteNote, redo, setMeta, setShowPiano, undo, useStore } from "../model/store";
+import { change, deleteSelection, redo, selectAll, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, undo, useStore } from "../model/store";
 import * as A from "./actions";
 import { About, Shortcuts } from "./Dialogs";
 import { MenuList, type MenuItem } from "./Menu";
@@ -41,7 +41,12 @@ export function Header() {
         { label: "Undo", shortcut: `${MOD}Z`, disabled: !s.undo.length, action: undo },
         { label: "Redo", shortcut: `⇧${MOD}Z`, disabled: !s.redo.length, action: redo },
         "-",
-        { label: "Delete note", shortcut: "⌫", disabled: s.sel === null, action: () => deleteNote(s.sel!) },
+        { label: "Cut", shortcut: `${MOD}X`, disabled: s.sel === null, action: () => A.copySelection(true) },
+        { label: "Copy", shortcut: `${MOD}C`, disabled: s.sel === null, action: () => A.copySelection() },
+        { label: "Paste", shortcut: `${MOD}V`, action: A.pasteFromMenu },
+        "-",
+        { label: "Select all", shortcut: `${MOD}A`, disabled: !s.song.notes.length, action: selectAll },
+        { label: s.anchor !== null && s.anchor !== s.sel ? "Delete notes" : "Delete note", shortcut: "⌫", disabled: s.sel === null, action: deleteSelection },
         {
           label: "Delete all notes…",
           disabled: !s.song.notes.length,
@@ -59,10 +64,15 @@ export function Header() {
         { label: `${s.showPiano ? "✓ " : "\u2003"}Piano`, action: () => setShowPiano(!s.showPiano) },
         "-",
         { heading: "Zoom" },
-        ...[50, 75, 100, 125, 150, 200].map((z) => ({
-          label: `${Math.round(s.zoom * 100) === z ? "✓ " : "\u2003"}${z} %`,
-          action: () => useStore.setState({ zoom: z / 100 }),
+        { label: `${s.zoom === "width" ? "✓ " : "\u2003"}Fit width`, action: () => setZoom("width") },
+        { label: `${s.zoom === "page" ? "✓ " : "\u2003"}Fit page`, action: () => setZoom("page") },
+        ...ZOOM_STEPS.map((z) => ({
+          label: `${s.zoom === z ? "✓ " : "\u2003"}${z * 100} %`,
+          action: () => setZoom(z),
         })),
+        "-",
+        { label: "Zoom in", action: () => stepZoom(1) },
+        { label: "Zoom out", action: () => stepZoom(-1) },
       ],
     },
     {

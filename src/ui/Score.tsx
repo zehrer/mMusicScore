@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, yPitch, type SystemLayout } from "../model/layout";
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, pitchName } from "../model/music";
-import { auditionAt, editLyric, insertNote, playingHere, recordUndo, select, setLyric, updateNote, useStore } from "../model/store";
+import { auditionAt, editLyric, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
 import { ACCIDENTAL, G, REST } from "./glyphs";
 
@@ -21,22 +21,39 @@ function svgPoint(e: { clientX: number; clientY: number }, el: Element) {
 export function Score() {
   const song = useStore((s) => s.song);
   const sel = useStore((s) => s.sel);
+  const anchor = useStore((s) => s.anchor);
+  const range = selRange({ sel, anchor });
   const playing = useStore(playingHere);
-  const zoom = useStore((s) => s.zoom);
+  const root = useRef<HTMLDivElement>(null);
+  const zoomMode = useStore((s) => s.zoom);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  // The fit modes follow the size of the score area.
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const PAD = 48;
+  const fitW = box.w ? (box.w - PAD) / PAGE_W : 1;
+  const fitH = box.h ? (box.h - PAD) / PAGE_H : 1;
+  const zoom = Math.max(0.25, Math.min(4, zoomMode === "width" ? fitW : zoomMode === "page" ? Math.min(fitW, fitH) : zoomMode));
+  useEffect(() => useStore.setState({ viewZoom: zoom }), [zoom]);
   const input = useStore((s) => s.input);
   const lyricEdit = useStore((s) => s.lyricEdit);
   const layout = useMemo(() => layoutScore(song), [song]);
   const [hover, setHover] = useState<Hover>(null);
   const drag = useRef<Drag>(null);
-  const root = useRef<HTMLDivElement>(null);
   const bottom = BOTTOM_LINE[song.clef];
   const systems = layout.pages.flat();
-  const caret = playing === null && lyricEdit === null ? caretAt(song, systems, layout.noteX, sel) : null;
-  const current = playing ?? sel;
+  const caret = playing === null && lyricEdit === null ? caretAt(song, systems, layout.noteX, range ? range[1] : null) : null;
+  // Highlighted span: the sounding note during playback, else the selection.
+  const span: [number, number] | null = playing !== null ? [playing, playing] : range;
 
   // Keep the selected or sounding note in view.
   useEffect(() => {
-    root.current?.querySelector(".note.playing, .note.sel")?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: playing === null ? "auto" : "smooth" });
+    root.current?.querySelector(".note.playing, .note.cur")?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: playing === null ? "auto" : "smooth" });
   }, [sel, playing, layout]);
 
   const onMove = (e: RPointerEvent, sys: SystemLayout) => {
@@ -51,6 +68,7 @@ export function Score() {
 
   const onNoteDown = (e: RPointerEvent, i: number) => {
     e.stopPropagation();
+    if (e.shiftKey) return select(i, true);
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     select(i);
     auditionAt(i);
@@ -86,16 +104,21 @@ export function Score() {
           {pi === 0 && <Heading song={song} />}
           {systems.map((sys, si) => (
             <g key={si} className={sys.measures.every((m) => m.extra) ? "edit-only" : undefined}>
-              {current !== null && current >= sys.start && current < sys.end && song.notes[current] && (
-                <rect
-                  className={`highlight edit-only${playing !== null ? " playing" : ""}`}
-                  x={layout.noteX[current] - 0.7 * S}
-                  y={sys.y - 2 * S}
-                  width={HEAD_W(song.notes[current].dur) + 1.4 * S}
-                  height={8 * S}
-                  rx={0.5 * S}
-                />
-              )}
+              {span && span[0] < sys.end && span[1] >= sys.start && song.notes[Math.min(span[1], sys.end - 1)] && (() => {
+                const a = Math.max(span[0], sys.start);
+                const b = Math.min(span[1], sys.end - 1);
+                const x = layout.noteX[a] - 0.7 * S;
+                return (
+                  <rect
+                    className={`highlight edit-only${playing !== null ? " playing" : ""}`}
+                    x={x}
+                    y={sys.y - 2 * S}
+                    width={layout.noteX[b] + HEAD_W(song.notes[b].dur) + 0.7 * S - x}
+                    height={8 * S}
+                    rx={0.5 * S}
+                  />
+                );
+              })()}
               <Staff sys={sys} song={song} final={sys.measures.some((m) => m.end === song.notes.length && !m.extra) && song.notes.length > 0} />
               <rect
                 className="hit-staff"
@@ -112,7 +135,7 @@ export function Score() {
                 const x = layout.noteX[i];
                 const y = n.rest ? sys.y + 2 * S : pitchY(sys, n.pitch, bottom);
                 return (
-                  <g key={n.id} className={`note${i === sel ? " sel" : ""}${i === playing ? " playing" : ""}`}>
+                  <g key={n.id} className={`note${range && i >= range[0] && i <= range[1] ? " sel" : ""}${i === sel ? " cur" : ""}${i === playing ? " playing" : ""}`}>
                     <NoteGlyph n={n} x={x} y={y} sys={sys} bottom={bottom} clef={song.clef} shown={layout.accidentals[i].shown} />
                     <rect
                       className="hit-note"

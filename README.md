@@ -29,7 +29,10 @@ Live: https://zehrer.github.io/mMusicScore/
 | Note value | **3 4 5 6 7** = sixteenth, eighth, quarter, half, whole; **.** = dot |
 | Pitch | **↑ ↓** one step, **⌘↑ ⌘↓** an octave, or drag the note |
 | Accidentals | **#** / **+** sharp, **-** flat, **=** natural (press again to remove it) |
-| Selection | **← →**, **Esc** clears it; **⌫** deletes the note |
+| Selection | **← →**, **Esc** clears it; **⌫** deletes the selected notes |
+| Several notes | **Shift+click** or **⇧← ⇧→**, **⌘A** all; then ↑ ↓, note values, dot and accidentals change all of them |
+| Copy / paste | **⌘C** / **⌘X** / **⌘V** – pasted after the selection, also into another song |
+| Zoom | Toolbar: − / + and Fit width, Fit page or a fixed size |
 | Playback | **Space** |
 | Undo / redo | **⌘Z** / **⇧⌘Z** |
 

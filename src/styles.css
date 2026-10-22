@@ -86,6 +86,10 @@ main { flex: 1; min-height: 0; display: flex; }
 .dot-icon { font-size: 22px; line-height: 0; }
 .tempo-input { display: flex; align-items: center; gap: 2px; padding: 0 6px; }
 .tempo-input input { width: 56px; border: 0; border-radius: 4px; padding: 4px 6px; background: rgb(255 255 255 / 70%); }
+.zoom { display: flex; align-items: center; }
+.zoom button { border: 0; background: none; border-radius: 50%; width: 28px; height: 28px; font-size: 16px; padding: 0; }
+.zoom button:hover:not(:disabled) { background: rgb(68 71 70 / 8%); }
+.toolbar .zoom select { min-width: 0; }
 .sel-info { color: var(--muted); font-size: 13px; padding: 0 8px; }
 
 /* --- Library --- */
