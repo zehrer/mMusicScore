@@ -63,6 +63,15 @@ function audio() {
 
 /** A soft, slightly plucked tone: triangle plus a quiet octave, with a decaying envelope. */
 /**
+ * How long a key is held: a little short of the note's length, so repeated notes are struck
+ * again; before a rest the note rings on into it and fades there instead of stopping dead.
+ * Self-contained: the HTML export embeds its source.
+ */
+export function holdTime(len: number, restAfter: number): number {
+  return restAfter > 0 ? len + Math.min(restAfter * 0.6, 1.5) : len * 0.95;
+}
+
+/**
  * A piano-like note: a few slightly stretched overtones (as on real strings) that fade faster the
  * higher they are, a short hammer knock, a tone that darkens while it decays, and a damper that
  * stops it when the key is released after `len` seconds. Low notes ring longer than high ones.
@@ -78,7 +87,8 @@ export function pianoTone(ac: AudioContext, out: AudioNode, m: number, at: numbe
   const body = ac.createGain();
   body.gain.setValueAtTime(0.0001, at);
   body.gain.exponentialRampToValueAtTime(0.32, at + 0.004);
-  body.gain.setTargetAtTime(0.0001, end, 0.06);
+  // Damper: a soft release of a few tenths of a second, not a hard cut.
+  body.gain.setTargetAtTime(0.0001, end, 0.12);
   const tone = ac.createBiquadFilter();
   tone.type = "lowpass";
   tone.Q.value = 0.4;
@@ -100,7 +110,7 @@ export function pianoTone(ac: AudioContext, out: AudioNode, m: number, at: numbe
     g.gain.setTargetAtTime(0.0001, at + 0.003, ring / (1 + 0.8 * (n - 1)) / 4);
     o.connect(g).connect(tone);
     o.start(at);
-    o.stop(end + 0.4);
+    o.stop(end + 1.2);
     nodes.push(o);
   }
 
@@ -171,7 +181,9 @@ export function play(song: Song, from: number, onNote: (i: number) => void, onEn
     const n = song.notes[i];
     const len = ticks(n) * tickSec;
     times.push(t);
-    if (!n.rest) stops.push(pianoTone(ac, master, midi(n.pitch, resolved[i].actual), t, len * 0.95));
+    const next = song.notes[i + 1];
+    const restAfter = next?.rest ? ticks(next) * tickSec : 0;
+    if (!n.rest) stops.push(pianoTone(ac, master, midi(n.pitch, resolved[i].actual), t, holdTime(len, restAfter)));
     t += len;
   }
   const end = t;

@@ -5,7 +5,7 @@
  */
 import { songToJSON } from "./io";
 import { midi, resolveAccidentals, ticks } from "./music";
-import { pianoTone } from "./playback";
+import { holdTime, pianoTone } from "./playback";
 import type { Song } from "./types";
 
 export const DATA_ID = "mmusicscore-data";
@@ -100,6 +100,7 @@ ${pages}
 
   // The same piano sound as in the app (its source is embedded at export).
   var pianoTone = ${scriptSafe(pianoTone.toString())};
+  var holdTime = ${scriptSafe(holdTime.toString())};
 
   // Scrolls once per line: when playback reaches a line that is not comfortably in view.
   var lastLine = null;
@@ -128,7 +129,8 @@ ${pages}
     var start = ctx.currentTime + 0.08, t = start, times = [];
     for (var i = from; i < EVENTS.length; i++) {
       times.push(t);
-      if (EVENTS[i][0] !== null) pianoTone(ctx, master, EVENTS[i][0], t, EVENTS[i][1] * 0.95);
+      var rest = EVENTS[i + 1] && EVENTS[i + 1][0] === null ? EVENTS[i + 1][1] : 0;
+      if (EVENTS[i][0] !== null) pianoTone(ctx, master, EVENTS[i][0], t, holdTime(EVENTS[i][1], rest));
       t += EVENTS[i][1];
     }
     var end = t, cur = -1;

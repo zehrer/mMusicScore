@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pianoTone } from "./playback";
+import { holdTime, pianoTone } from "./playback";
 
 /** Just enough of the Web Audio API to see what a note schedules. */
 function fakeAudio() {
@@ -56,5 +56,12 @@ describe("piano sound", () => {
     const { ac, log } = fakeAudio();
     fn(ac, {} as AudioNode, 72, 0, 0.3);
     expect(log.some((l) => l.startsWith("osc start"))).toBe(true);
+  });
+
+  it("lets a note ring into a following rest, otherwise releases just before the next", () => {
+    expect(holdTime(0.5, 0)).toBeCloseTo(0.475);
+    expect(holdTime(0.5, 0.5)).toBeCloseTo(0.8);
+    expect(holdTime(0.5, 4)).toBeCloseTo(2);
+    expect(new Function(`return ${holdTime.toString()}`)()(0.5, 0.5)).toBeCloseTo(0.8);
   });
 });
