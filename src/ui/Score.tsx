@@ -3,6 +3,7 @@ import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, yPitch, 
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, noteLabel, pitchName, type NameStyle, type Resolved } from "../model/music";
 import { auditionAt, editLyric, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
+import { follow } from "./follow";
 import { ACCIDENTAL, G, REST } from "./glyphs";
 
 export const HEAD_W = (dur: Duration) => (dur === 1 ? 1.69 * S : 1.18 * S);
@@ -54,8 +55,10 @@ export function Score() {
 
   // Keep the selected or sounding note in view.
   useEffect(() => {
-    root.current?.querySelector(".note.playing, .note.cur")?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: playing === null ? "auto" : "smooth" });
-  }, [sel, playing, layout]);
+    const box = root.current;
+    const el = box?.querySelector(".note.playing, .note.cur");
+    if (box && el) follow(box, el, playing !== null);
+  }, [sel, playing, layout, zoom]);
 
   const onMove = (e: RPointerEvent, sys: SystemLayout) => {
     if (drag.current) return;

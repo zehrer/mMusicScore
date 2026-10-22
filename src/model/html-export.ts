@@ -108,6 +108,14 @@ ${pages}
     });
   }
 
+  // Keeps the sounding note's line in the upper part of the window, below the sticky bar. Only
+  // rectangles are used: Safari does not scroll SVG elements with scrollIntoView.
+  function follow(el) {
+    var r = el.getBoundingClientRect(), h = window.innerHeight;
+    var top = document.querySelector(".topbar").offsetHeight;
+    if (r.top < top + h * 0.08 || r.bottom > h * 0.62) window.scrollTo({ top: window.scrollY + r.top - top - h * 0.25, behavior: "smooth" });
+  }
+
   function stop() {
     if (!stopAt) return;
     stopAt();
@@ -139,7 +147,7 @@ ${pages}
         if (i >= 0) {
           mark(i, true);
           var el = notes(i)[0];
-          if (el && el.scrollIntoView) el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          if (el) follow(el);
         }
       }
       raf = requestAnimationFrame(tick);
