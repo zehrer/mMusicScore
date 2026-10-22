@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as R
 import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, VERSE_DY, yPitch, type SystemLayout } from "../model/layout";
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, noteLabel, pitchName, type NameStyle, type Resolved } from "../model/music";
 import { expand, formOf, sectionRange, sectionsOf, verseOf } from "../model/sections";
-import { auditionAt, editLyric, hasSections, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
+import { auditionAt, deleteLast, editLyric, hasSections, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
 import { playFrom } from "./actions";
 import { follow } from "./follow";
@@ -37,9 +37,16 @@ export function Score() {
   useEffect(() => {
     const el = root.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => setBox({ w: el.clientWidth, h: el.clientHeight }));
+    // Measured right away too: the observer reports only once the page renders (not while hidden).
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      removeEventListener("resize", measure);
+    };
   }, []);
   const PAD = 48;
   const fitW = box.w ? (box.w - PAD) / PAGE_W : 1;
@@ -71,11 +78,15 @@ export function Score() {
   const caretK = caretTarget < 0 ? null : shown.src ? shown.src.indexOf(caretTarget) : caretTarget;
   const caret = editing && dPlaying === null && lyricEdit === null && (caretK !== -1 || !song.notes.length) ? caretAt(dsong, systems, layout.noteX, caretK === -1 ? null : caretK) : null;
 
-  // Keep the selected or sounding note in view.
+  // Keep the selected or sounding note in view; during playback line by line.
+  const lastLine = useRef<Element | null>(null);
   useEffect(() => {
     const box = root.current;
     const el = box?.querySelector(".note.playing, .note.cur");
-    if (box && el) follow(box, el, dPlaying !== null);
+    if (!box || !el) return;
+    const line = dPlaying !== null ? el.parentElement : null;
+    follow(box, el, line, line !== lastLine.current);
+    lastLine.current = line;
   }, [sel, dPlaying, layout, zoom]);
 
   /** Song index and section a click into `sys` inserts at. */
@@ -91,7 +102,7 @@ export function Score() {
     const p = svgPoint(e, e.currentTarget);
     setHover({ sys, x: p.x, pitch: clampPitch(yPitch(sys, p.y, bottom)) });
   };
-  const onClick = (e: RPointerEvent, sys: SystemLayout) => {
+  const onClick = (e: React.MouseEvent, sys: SystemLayout) => {
     const p = svgPoint(e, e.currentTarget);
     const [index, sec] = insertAt(sys, p.x);
     insertNote(index, clampPitch(yPitch(sys, p.y, bottom)), undefined, sec);
@@ -121,8 +132,25 @@ export function Score() {
   };
   const onNoteUp = () => (drag.current = null);
 
+  // Swipe left across the music (edit mode, touch): delete the last input, like Backspace.
+  const swipe = useRef<{ x: number; y: number; t: number; left: number } | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.touches[0];
+    swipe.current = editing && e.touches.length === 1 ? { x: t.clientX, y: t.clientY, t: Date.now(), left: root.current?.scrollLeft ?? 0 } : null;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const s = swipe.current;
+    swipe.current = null;
+    const t = e.changedTouches[0];
+    if (!s || !t) return;
+    const dx = t.clientX - s.x;
+    const dy = t.clientY - s.y;
+    // Quick, mostly horizontal, and not a sideways scroll of a zoomed-in sheet.
+    if (dx < -70 && Math.abs(dy) < Math.abs(dx) / 2 && Date.now() - s.t < 600 && (root.current?.scrollLeft ?? 0) === s.left) deleteLast();
+  };
+
   return (
-    <div className={`score${editing ? "" : " viewing"}`} ref={root} onPointerLeave={() => setHover(null)}>
+    <div className={`score${editing ? "" : " viewing"}`} ref={root} onPointerLeave={() => setHover(null)} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {layout.pages.map((systems, pi) => (
         <svg
           key={pi}
@@ -165,7 +193,8 @@ export function Score() {
                   height={14 * S}
                   onPointerMove={(e) => onMove(e, sys)}
                   onPointerLeave={() => setHover(null)}
-                  onPointerDown={(e) => onClick(e, sys)}
+                  // On click, not pointerdown: a swipe or scroll that starts here must not add a note.
+                  onClick={(e) => onClick(e, sys)}
                 />}
                 {dsong.notes.slice(sys.start, sys.end).map((n, j) => {
                   const k = sys.start + j;

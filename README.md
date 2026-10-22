@@ -17,7 +17,8 @@ Live: https://zehrer.github.io/mMusicScore/
 - **Sections and form**: write a chorus once and play it as often as the song needs. Select the first note of a part and choose **Split at selection** (form bar above the score), or add an empty section. The form – e.g. Verse · Chorus · Verse · Chorus – is a row of chips: drag to reorder, click for options, **+** to repeat a section. **Compact** shows each section once with the form above the music; **Expanded** writes the whole song out, and edits there change the section everywhere. Playback, the HTML export and MusicXML follow the form.
 - **Verses**: several lyric lines under the same notes (while typing lyrics, **↓ / ↑** switch the line). The n-th time a section comes up it is sung with verse n; a chorus with one text repeats it.
 - **Accidentals** carry through the rest of the measure as usual; the key signature is applied automatically.
-- **Cursor**: the selected note is blue with a highlight, a blinking bar shows where the next note goes (after the selection, or at the end). During **playback** from the selection the sounding note turns red and the score scrolls along. Playback keeps going when you open another song; a small "now playing" window in the corner then follows the playing song (Open jumps back, ■ stops).
+- **Sound**: a synthesized piano (stretched overtones, hammer, damper), the same in the HTML export.
+- **Cursor**: the selected note is blue with a highlight, a blinking bar shows where the next note goes (after the selection, or at the end). During **playback** from the selection the sounding note turns red and the score scrolls along line by line. Playback keeps going when you open another song; a small "now playing" window in the corner then follows the playing song (Open jumps back, ■ stops).
 - **Import / export**: the whole library or single songs as JSON, single songs as **MusicXML** (MuseScore, Finale, Sibelius, Dorico …). Imports JSON and uncompressed MusicXML (first voice of the first part).
 - **HTML export** (File → Export song as HTML): a single file that shows the score in any browser and plays it (▶ Play, or click a note to start there). Its **Open in mMusicScore** button adds the song to the app again; File → Import also reads the file.
 - **Print / PDF** via File → Print; only the score pages are printed.
@@ -36,6 +37,7 @@ Live: https://zehrer.github.io/mMusicScore/
 | Pitch | **↑ ↓** one step, **⌘↑ ⌘↓** an octave, or drag the note |
 | Accidentals | **#** / **+** sharp, **-** flat, **=** natural (press again to remove it) |
 | Selection | **← →**, **Esc** clears it; **⌫** deletes the selected notes |
+| Delete by touch | Quick **swipe left** across the music deletes the last input (like ⌫), with Undo in the notice |
 | Several notes | **Shift+click** or **⇧← ⇧→**, **⌘A** all; then ↑ ↓, note values, dot and accidentals change all of them |
 | Copy / paste | **⌘C** / **⌘X** / **⌘V** – pasted after the selection, also into another song |
 | Zoom | Toolbar: − / + and Fit width, Fit page or a fixed size |

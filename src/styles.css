@@ -159,6 +159,12 @@ main { flex: 1; min-height: 0; display: flex; }
 .piano .black.lit rect, .piano .black:active rect { fill: var(--accent); }
 .piano text { font-size: 9px; fill: var(--muted); pointer-events: none; }
 
+.toast {
+  position: absolute; left: 50%; bottom: 16px; z-index: 6; transform: translateX(-50%); display: flex; align-items: center; gap: 12px;
+  padding: 8px 8px 8px 16px; border-radius: 8px; background: #323232; color: #fff; white-space: nowrap; animation: mini-in 0.15s ease-out;
+}
+.toast button { border: 0; background: none; color: #a8c7fa; font-weight: 600; padding: 4px 10px; border-radius: 6px; }
+
 /* --- Now playing (another song is open) --- */
 .score-wrap { flex: 1; min-height: 0; display: flex; position: relative; }
 .mini-player {
@@ -187,7 +193,10 @@ main { flex: 1; min-height: 0; display: flex; }
 
 /* --- Score: sheets of paper on a desk --- */
 .score { flex: 1; min-width: 0; overflow: auto; background: var(--desk); padding: 24px; display: flex; flex-direction: column; align-items: safe center; gap: 24px; }
-.page { flex: none; box-shadow: 0 1px 3px rgb(60 64 67 / 30%), 0 4px 12px rgb(60 64 67 / 12%); user-select: none; touch-action: none; }
+/* The sheet scrolls by touch; only dragging a note (to change its pitch) takes the gesture. */
+.page { flex: none; box-shadow: 0 1px 3px rgb(60 64 67 / 30%), 0 4px 12px rgb(60 64 67 / 12%); user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: pan-x pan-y; }
+.hit-note { touch-action: none; }
+.score.viewing .hit-note { touch-action: manipulation; }
 .paper { fill: #fff; }
 .mus { font-family: Bravura; font-size: 40px; fill: currentColor; }
 /* Color is set once on the page so .sel and .playing can recolor a whole note. */
@@ -247,6 +256,8 @@ main { flex: 1; min-height: 0; display: flex; }
   .logo { width: 28px; height: 28px; }
   .title { font-size: 16px; }
   .composer { display: none; }
+  /* Sections are managed on bigger screens; phones keep the room for the music. */
+  .form-bar { display: none; }
   .toolbar, .view-bar { margin: 2px 8px 6px; }
   .view-bar { flex-wrap: wrap; gap: 6px; padding: 6px; border-radius: 18px; }
   .view-bar .song-pick { flex: 1 1 100%; }

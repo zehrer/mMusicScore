@@ -64,6 +64,8 @@ interface State {
   /** Zoom actually shown, which the score works out for the fit modes. */
   viewZoom: number;
   dialog: "about" | "keys" | null;
+  /** Short notice at the bottom, optionally with an Undo button. */
+  toast: { text: string; undo?: boolean } | null;
   showPiano: boolean;
   /** Note names above the staff, in English or German naming. */
   showNames: boolean;
@@ -95,6 +97,7 @@ export const useStore = create<State>(() => ({
   zoom: loadZoom(),
   viewZoom: 1,
   dialog: null,
+  toast: null,
   showPiano: loadFlag("showPiano", true),
   showNames: loadFlag("showNames", false),
   nameStyle: loadNameStyle(),
@@ -358,6 +361,27 @@ export function deleteNote(i: number) {
   change(updateNotes((ns) => ns.filter((_, j) => j !== i)), {
     sel: get().song.notes.length <= 1 ? null : Math.max(0, i - 1),
   });
+}
+
+let toastTimer: ReturnType<typeof setTimeout> | undefined;
+
+export function showToast(text: string, undo = false) {
+  clearTimeout(toastTimer);
+  set({ toast: { text, undo } });
+  toastTimer = setTimeout(() => set({ toast: null }), 3000);
+}
+
+/**
+ * Backspace by gesture: deletes the selected notes, or the last note when nothing is selected.
+ * The note before becomes the selection, so the next swipe goes on backwards.
+ */
+export function deleteLast() {
+  const { song } = get();
+  if (!song.notes.length) return;
+  if (get().sel === null) set({ sel: song.notes.length - 1, anchor: null });
+  const n = selRange(get())!;
+  deleteSelection();
+  showToast(n[1] > n[0] ? `${n[1] - n[0] + 1} notes deleted` : "Note deleted", true);
 }
 
 /** Deletes the selected notes; the note before them becomes the selection. */

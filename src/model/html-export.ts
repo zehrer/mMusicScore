@@ -5,6 +5,7 @@
  */
 import { songToJSON } from "./io";
 import { midi, resolveAccidentals, ticks } from "./music";
+import { pianoTone } from "./playback";
 import type { Song } from "./types";
 
 export const DATA_ID = "mmusicscore-data";
@@ -97,28 +98,18 @@ ${pages}
   function notes(i) { return document.querySelectorAll('.note[data-i="' + i + '"]'); }
   function mark(i, on) { notes(i).forEach(function (el) { el.classList.toggle("playing", on); }); }
 
-  function tone(m, at, len, out) {
-    var f = 440 * Math.pow(2, (m - 69) / 12);
-    var g = ctx.createGain();
-    g.gain.setValueAtTime(0, at);
-    g.gain.linearRampToValueAtTime(0.32, at + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.14, at + Math.min(0.25, len * 0.6));
-    g.gain.setValueAtTime(0.14, at + Math.max(0.02, len - 0.05));
-    g.gain.exponentialRampToValueAtTime(0.0001, at + len + 0.08);
-    g.connect(out);
-    [["triangle", f, 1], ["sine", f * 2, 0.18]].forEach(function (o) {
-      var osc = ctx.createOscillator(), og = ctx.createGain();
-      osc.type = o[0]; osc.frequency.value = o[1]; og.gain.value = o[2];
-      osc.connect(og).connect(g); osc.start(at); osc.stop(at + len + 0.1);
-    });
-  }
+  // The same piano sound as in the app (its source is embedded at export).
+  var pianoTone = ${scriptSafe(pianoTone.toString())};
 
-  // Keeps the sounding note's line in the upper part of the window, below the sticky bar. Only
-  // rectangles are used: Safari does not scroll SVG elements with scrollIntoView.
+  // Scrolls once per line: when playback reaches a line that is not comfortably in view.
+  var lastLine = null;
   function follow(el) {
-    var r = el.getBoundingClientRect(), h = window.innerHeight;
+    var line = el.parentNode;
+    if (line === lastLine) return;
+    lastLine = line;
+    var r = line.getBoundingClientRect(), h = window.innerHeight;
     var top = document.querySelector(".topbar").offsetHeight;
-    if (r.top < top + h * 0.08 || r.bottom > h * 0.62) window.scrollTo({ top: window.scrollY + r.top - top - h * 0.25, behavior: "smooth" });
+    if (r.top < top + h * 0.03 || r.bottom > h * 0.9) window.scrollTo({ top: window.scrollY + r.top - top - h * 0.12, behavior: "smooth" });
   }
 
   function stop() {
@@ -137,7 +128,7 @@ ${pages}
     var start = ctx.currentTime + 0.08, t = start, times = [];
     for (var i = from; i < EVENTS.length; i++) {
       times.push(t);
-      if (EVENTS[i][0] !== null) tone(EVENTS[i][0], t, EVENTS[i][1] * 0.92, master);
+      if (EVENTS[i][0] !== null) pianoTone(ctx, master, EVENTS[i][0], t, EVENTS[i][1] * 0.95);
       t += EVENTS[i][1];
     }
     var end = t, cur = -1;
@@ -164,6 +155,7 @@ ${pages}
       master.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
       setTimeout(function () { master.disconnect(); }, 150);
       if (cur >= 0) mark(cur, false);
+      lastLine = null;
       stopAt = null;
       btn.textContent = "▶ Play"; btn.classList.remove("on");
     };

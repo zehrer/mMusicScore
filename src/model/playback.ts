@@ -60,32 +60,75 @@ function audio() {
   return ctx;
 }
 
-const freq = (m: number) => 440 * 2 ** ((m - 69) / 12);
 
 /** A soft, slightly plucked tone: triangle plus a quiet octave, with a decaying envelope. */
-function tone(ac: AudioContext, out: AudioNode, m: number, at: number, len: number) {
-  const gain = ac.createGain();
-  gain.gain.setValueAtTime(0, at);
-  gain.gain.linearRampToValueAtTime(0.32, at + 0.012);
-  gain.gain.exponentialRampToValueAtTime(0.14, at + Math.min(0.25, len * 0.6));
-  gain.gain.setValueAtTime(0.14, at + Math.max(0.02, len - 0.05));
-  gain.gain.exponentialRampToValueAtTime(0.0001, at + len + 0.08);
-  gain.connect(out);
-  const oscs = [
-    { type: "triangle" as OscillatorType, f: freq(m), g: 1 },
-    { type: "sine" as OscillatorType, f: freq(m) * 2, g: 0.18 },
-  ].map(({ type, f, g }) => {
+/**
+ * A piano-like note: a few slightly stretched overtones (as on real strings) that fade faster the
+ * higher they are, a short hammer knock, a tone that darkens while it decays, and a damper that
+ * stops it when the key is released after `len` seconds. Low notes ring longer than high ones.
+ *
+ * Self-contained on purpose: the HTML export embeds this function's source to sound the same.
+ */
+export function pianoTone(ac: AudioContext, out: AudioNode, m: number, at: number, len: number): () => void {
+  const f = 440 * Math.pow(2, (m - 69) / 12);
+  const ring = Math.max(0.7, 4.2 - (m - 40) * 0.07);
+  const end = at + len;
+  const nodes: AudioScheduledSourceNode[] = [];
+
+  const body = ac.createGain();
+  body.gain.setValueAtTime(0.0001, at);
+  body.gain.exponentialRampToValueAtTime(0.32, at + 0.004);
+  body.gain.setTargetAtTime(0.0001, end, 0.06);
+  const tone = ac.createBiquadFilter();
+  tone.type = "lowpass";
+  tone.Q.value = 0.4;
+  tone.frequency.setValueAtTime(Math.min(16000, f * 10), at);
+  tone.frequency.setTargetAtTime(Math.min(6000, f * 3), at + 0.02, ring * 0.25);
+  tone.connect(body).connect(out);
+
+  for (let n = 1; n <= 7; n++) {
+    const pf = f * n * Math.sqrt(1 + 0.0004 * n * n);
+    if (pf > 18000) break;
     const o = ac.createOscillator();
-    o.type = type;
-    o.frequency.value = f;
-    const og = ac.createGain();
-    og.gain.value = g;
-    o.connect(og).connect(gain);
+    o.frequency.value = pf;
+    // A whisper of detune on the fundamental, like the two or three strings of a piano note.
+    if (n === 1) o.detune.value = 1.5;
+    const g = ac.createGain();
+    const amp = (n === 1 ? 1 : 0.55 / Math.pow(n, 1.2)) * (m > 84 ? 0.7 : 1);
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(amp, at + 0.003);
+    g.gain.setTargetAtTime(0.0001, at + 0.003, ring / (1 + 0.8 * (n - 1)) / 4);
+    o.connect(g).connect(tone);
     o.start(at);
-    o.stop(at + len + 0.1);
-    return o;
-  });
-  return () => oscs.forEach((o) => o.stop());
+    o.stop(end + 0.4);
+    nodes.push(o);
+  }
+
+  // Hammer: 25 ms of filtered noise.
+  const len25 = Math.ceil(ac.sampleRate * 0.025);
+  const buf = ac.createBuffer(1, len25, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < len25; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len25);
+  const noise = ac.createBufferSource();
+  noise.buffer = buf;
+  const band = ac.createBiquadFilter();
+  band.type = "bandpass";
+  band.frequency.value = Math.min(8000, f * 4);
+  band.Q.value = 1.2;
+  const ng = ac.createGain();
+  ng.gain.value = 0.12;
+  noise.connect(band).connect(ng).connect(body);
+  noise.start(at);
+  nodes.push(noise);
+
+  return () =>
+    nodes.forEach((x) => {
+      try {
+        x.stop();
+      } catch {
+        /* already stopped */
+      }
+    });
 }
 
 /**
@@ -106,7 +149,7 @@ export function unlockAudioOnFirstTap() {
 /** Plays one note right away, e.g. when it is entered or moved. */
 export function audition(m: number) {
   const ac = audio();
-  tone(ac, ac.destination, m, ac.currentTime, 0.35);
+  pianoTone(ac, ac.destination, m, ac.currentTime, 0.6);
 }
 
 /**
@@ -128,7 +171,7 @@ export function play(song: Song, from: number, onNote: (i: number) => void, onEn
     const n = song.notes[i];
     const len = ticks(n) * tickSec;
     times.push(t);
-    if (!n.rest) stops.push(tone(ac, master, midi(n.pitch, resolved[i].actual), t, len * 0.92));
+    if (!n.rest) stops.push(pianoTone(ac, master, midi(n.pitch, resolved[i].actual), t, len * 0.95));
     t += len;
   }
   const end = t;

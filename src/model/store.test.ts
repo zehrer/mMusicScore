@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { emptySong, parseMelody } from "./music";
-import { deleteSelection, openSong, pasteNotes, select, selectedNotes, selRange, setDuration, undo, useStore } from "./store";
+import { deleteLast, deleteSelection, openSong, pasteNotes, select, selectedNotes, selRange, setDuration, undo, useStore } from "./store";
 
 const names = () => useStore.getState().song.notes.map((n) => n.pitch);
 
@@ -39,5 +39,17 @@ describe("range selection", () => {
     expect(useStore.getState().sel).toBe(0);
     undo();
     expect(names()).toEqual([28, 29, 30, 31, 32]);
+  });
+
+  it("deletes backwards by gesture: the selection, then the note before", () => {
+    select(2);
+    deleteLast();
+    expect(names()).toEqual([28, 29, 31, 32]);
+    deleteLast();
+    expect(names()).toEqual([28, 31, 32]);
+    select(null);
+    deleteLast();
+    expect(names()).toEqual([28, 31]);
+    expect(useStore.getState().toast?.undo).toBe(true);
   });
 });

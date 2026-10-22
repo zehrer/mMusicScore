@@ -91,6 +91,7 @@ function onKey(e: KeyboardEvent) {
 export function App() {
   const showPiano = useStore((s) => s.showPiano);
   const editing = useStore((s) => s.mode === "edit");
+  const toast = useStore((s) => s.toast);
   useEffect(() => {
     addEventListener("keydown", onKey);
     const unlisten = A.listenClipboard();
@@ -110,6 +111,21 @@ export function App() {
           <div className="score-wrap">
             <Score />
             <MiniPlayer />
+            {toast && (
+              <div className="toast" role="status">
+                {toast.text}
+                {toast.undo && (
+                  <button
+                    onClick={() => {
+                      undo();
+                      useStore.setState({ toast: null });
+                    }}
+                  >
+                    Undo
+                  </button>
+                )}
+              </div>
+            )}
           </div>
           {editing && showPiano && <Piano />}
         </div>
