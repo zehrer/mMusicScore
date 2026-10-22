@@ -24,6 +24,9 @@ interface State {
   isPlaying: boolean;
   zoom: number;
   dialog: "about" | "keys" | null;
+  showPiano: boolean;
+  /** Note whose lyric syllable is being typed. */
+  lyricEdit: number | null;
   /** Bumped by every change of the song, which schedules an autosave. */
   revision: number;
   savedAt: Date | null;
@@ -41,17 +44,37 @@ export const useStore = create<State>(() => ({
   isPlaying: false,
   zoom: 1,
   dialog: null,
+  showPiano: loadFlag("showPiano", true),
+  lyricEdit: null,
   revision: 0,
   savedAt: null,
   saveError: null,
 }));
+
+function loadFlag(key: string, def: boolean) {
+  try {
+    const v = localStorage.getItem(key);
+    return v === null ? def : v === "1";
+  } catch {
+    return def;
+  }
+}
+
+export function setShowPiano(on: boolean) {
+  set({ showPiano: on });
+  try {
+    localStorage.setItem("showPiano", on ? "1" : "0");
+  } catch {
+    /* only a convenience */
+  }
+}
 
 const get = useStore.getState;
 const set = useStore.setState;
 
 /** Shows `song` with a fresh undo history; `dirty` saves it right away. */
 export function openSong(song: Song, dirty = false) {
-  set((s) => ({ song, undo: [], redo: [], sel: null, playing: null, revision: dirty ? s.revision + 1 : s.revision }));
+  set((s) => ({ song, undo: [], redo: [], sel: null, playing: null, lyricEdit: null, revision: dirty ? s.revision + 1 : s.revision }));
 }
 
 /**
@@ -116,6 +139,31 @@ export function insertStep(step: number) {
   const index = sel === null ? song.notes.length : sel + 1;
   const ref = song.notes[index - 1]?.pitch ?? (song.clef === "bass" ? 21 : 33);
   insertNote(index, nearestPitch(step, ref), false);
+}
+
+/** Piano entry: the exact pitch and alteration go after the selection. */
+export function insertPitch(pitch: number, alter: Alter) {
+  const { song, sel, input } = get();
+  const index = sel === null ? song.notes.length : sel + 1;
+  const n: NoteEvent = { id: newId(), dur: input.dur, pitch: clampPitch(pitch), alter };
+  if (input.dots) n.dots = 1;
+  change(updateNotes((ns) => [...ns.slice(0, index), n, ...ns.slice(index)]), { sel: index });
+  if (input.rest) set({ input: { ...input, rest: false } });
+  auditionAt(index);
+}
+
+/** Sets the lyric syllable of note `i`; a trailing "-" joins it to the next syllable. */
+export function setLyric(i: number, lyric: string) {
+  const n = get().song.notes[i];
+  if (!n || (n.lyric ?? "") === lyric) return;
+  updateNote(i, { lyric: lyric || undefined });
+}
+
+/** Starts typing lyrics at note `i` (the selection, or the first note). */
+export function editLyric(i: number | null) {
+  const { song } = get();
+  if (i === null || !song.notes[i]) return set({ lyricEdit: null });
+  set({ lyricEdit: i, sel: i });
 }
 
 export function insertRest() {

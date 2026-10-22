@@ -57,6 +57,7 @@ function normalizeNote(raw: unknown): NoteEvent {
   if (r.dots) n.dots = 1;
   if (r.rest) n.rest = true;
   if (r.alter === -1 || r.alter === 0 || r.alter === 1) n.alter = r.alter as Alter;
+  if (typeof r.lyric === "string" && r.lyric) n.lyric = r.lyric;
   return n;
 }
 

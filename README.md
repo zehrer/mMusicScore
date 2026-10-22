@@ -11,6 +11,8 @@ Live: https://zehrer.github.io/mMusicScore/
 - **Song library** (left): every song in this browser, with search. ⋯ on a song: duplicate, export, delete.
 - **Score**: A4 pages like paper, with title, composer, tempo, clef, key and time signature. Bar lines, system and page breaks are laid out automatically.
 - **Edit in place**: click on the staff to insert a note at that position (a grey preview shows pitch and value); click a note to select it, drag it up or down to change its pitch.
+- **Piano** below the score: click a key to insert that note after the selection, in the current note value (View → Piano hides it).
+- **Lyrics**: one syllable per note under the staff (Lyrics button or **L**). Exported to and imported from MusicXML.
 - **Accidentals** carry through the rest of the measure as usual; the key signature is applied automatically.
 - **Playback** from the selection with a simple synthesizer; the sounding note turns red.
 - **Import / export**: the whole library or single songs as JSON, single songs as **MusicXML** (MuseScore, Finale, Sibelius, Dorico …). Imports JSON and uncompressed MusicXML (first voice of the first part).
@@ -21,6 +23,8 @@ Live: https://zehrer.github.io/mMusicScore/
 | | |
 |---|---|
 | Insert a note | Click on the staff, or type **A–G** (after the selection, in the nearest octave; H works as B) |
+| Insert from the piano | Click a key below the score |
+| Lyrics | **L** or the Lyrics button, then type; **Space** / **Tab** next note, **-** joins syllables (Twin-kle), **Enter** / **Esc** stops; click a syllable to edit it |
 | Insert a rest | **R** or **0**, or switch the toolbar to rests |
 | Note value | **3 4 5 6 7** = sixteenth, eighth, quarter, half, whole; **.** = dot |
 | Pitch | **↑ ↓** one step, **⌘↑ ⌘↓** an octave, or drag the note |

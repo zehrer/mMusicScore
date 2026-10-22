@@ -1,9 +1,10 @@
 import { useEffect } from "react";
 import { DURATIONS } from "../model/music";
-import { deleteNote, insertRest, insertStep, moveSelected, redo, select, setDuration, toggleAlter, toggleDot, undo, useStore } from "../model/store";
+import { deleteNote, editLyric, insertRest, insertStep, moveSelected, redo, select, setDuration, toggleAlter, toggleDot, undo, useStore } from "../model/store";
 import * as A from "./actions";
 import { Header } from "./Header";
 import { Library } from "./Library";
+import { Piano } from "./Piano";
 import { Score } from "./Score";
 import { Toolbar } from "./Toolbar";
 
@@ -68,12 +69,17 @@ function onKey(e: KeyboardEvent) {
       return void select(null);
     case " ":
       return void (A.togglePlay(), handled());
+    case "l":
+    case "L":
+      if (song.notes.length) editLyric(sel ?? 0);
+      return handled();
     case "?":
       return void useStore.setState({ dialog: "keys" });
   }
 }
 
 export function App() {
+  const showPiano = useStore((s) => s.showPiano);
   useEffect(() => {
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
@@ -84,7 +90,10 @@ export function App() {
       <Toolbar />
       <main>
         <Library />
-        <Score />
+        <div className="editor">
+          <Score />
+          {showPiano && <Piano />}
+        </div>
       </main>
     </div>
   );

@@ -1,7 +1,7 @@
-import { Fragment, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from "react";
+import { Fragment, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, yPitch, type SystemLayout } from "../model/layout";
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, pitchName } from "../model/music";
-import { auditionAt, insertNote, recordUndo, select, updateNote, useStore } from "../model/store";
+import { auditionAt, editLyric, insertNote, recordUndo, select, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
 import { ACCIDENTAL, G, REST } from "./glyphs";
 
@@ -24,6 +24,7 @@ export function Score() {
   const playing = useStore((s) => s.playing);
   const zoom = useStore((s) => s.zoom);
   const input = useStore((s) => s.input);
+  const lyricEdit = useStore((s) => s.lyricEdit);
   const layout = useMemo(() => layoutScore(song), [song]);
   const [hover, setHover] = useState<Hover>(null);
   const drag = useRef<Drag>(null);
@@ -110,6 +111,7 @@ export function Score() {
                   </g>
                 );
               })}
+              <Lyrics sys={sys} song={song} noteX={layout.noteX} editing={lyricEdit} />
               {hover?.sys === sys && (
                 <g className="ghost edit-only">
                   <NoteGlyph
@@ -267,5 +269,101 @@ function NoteGlyph({ n, x, y, sys, bottom, clef, shown }: { n: NoteEvent; x: num
         </text>
       ) : null}
     </g>
+  );
+}
+
+const LYRIC_DY = 7.8 * S;
+const centerX = (n: NoteEvent, x: number) => x + HEAD_W(n.dur) / 2;
+
+/** Next (dir 1) or previous (dir -1) note that is not a rest. */
+function nextSung(notes: NoteEvent[], i: number, dir: 1 | -1) {
+  for (let j = i + dir; j >= 0 && j < notes.length; j += dir) if (!notes[j].rest) return j;
+  return null;
+}
+
+function Lyrics({ sys, song, noteX, editing }: { sys: SystemLayout; song: Song; noteX: number[]; editing: number | null }) {
+  const y = sys.y + LYRIC_DY;
+  const out = [];
+  for (let i = sys.start; i < sys.end; i++) {
+    const n = song.notes[i];
+    const cx = centerX(n, noteX[i]);
+    if (i === editing) {
+      out.push(<LyricInput key={`edit-${n.id}`} i={i} x={cx} y={y} />);
+      continue;
+    }
+    if (!n.lyric) continue;
+    const text = n.lyric.replace(/-$/, "");
+    out.push(
+      <text key={n.id} className="lyric" x={cx} y={y} textAnchor="middle" onPointerDown={() => editLyric(i)}>
+        {text}
+      </text>,
+    );
+    // A hyphen centered between this syllable and the next one in the same system.
+    const next = nextSung(song.notes, i, 1);
+    if (n.lyric.endsWith("-") && next !== null && next < sys.end) {
+      out.push(
+        <text key={`${n.id}-h`} className="lyric" x={(cx + centerX(song.notes[next], noteX[next])) / 2} y={y} textAnchor="middle">
+          -
+        </text>,
+      );
+    }
+  }
+  return <g className="lyrics">{out}</g>;
+}
+
+/**
+ * Inline editor for one syllable: Space or Tab goes to the next note, "-" ends the syllable with a
+ * hyphen, Shift+Tab or Backspace in an empty field goes back, Enter or Esc stops.
+ */
+function LyricInput({ i, x, y }: { i: number; x: number; y: number }) {
+  const n = useStore((s) => s.song.notes[i]);
+  const [value, setValue] = useState(() => (n?.lyric ?? "").replace(/-$/, ""));
+  const hyphen = useRef(!!n?.lyric?.endsWith("-"));
+  const commit = (h = hyphen.current) => {
+    hyphen.current = h;
+    setLyric(i, value.trim() ? value.trim() + (h ? "-" : "") : "");
+  };
+  const go = (dir: 1 | -1 | 0) => {
+    const notes = useStore.getState().song.notes;
+    const to = dir ? nextSung(notes, i, dir) : null;
+    editLyric(to);
+  };
+  const onKey = (e: RKeyboardEvent<HTMLInputElement>) => {
+    const key = e.key;
+    if (key === " " || (key === "Tab" && !e.shiftKey)) {
+      e.preventDefault();
+      commit(false);
+      go(1);
+    } else if (key === "-") {
+      e.preventDefault();
+      commit(true);
+      go(1);
+    } else if (key === "Tab" || (key === "Backspace" && !value)) {
+      e.preventDefault();
+      commit();
+      go(-1);
+    } else if (key === "Enter" || key === "Escape") {
+      e.preventDefault();
+      commit();
+      go(0);
+    }
+  };
+  return (
+    <foreignObject className="edit-only" x={x - 60} y={y - 15} width={120} height={22}>
+      <input
+        className="lyric-input"
+        value={value}
+        autoFocus
+        onFocus={(e) => e.currentTarget.select()}
+        onChange={(e) => setValue(e.target.value)}
+        onKeyDown={onKey}
+        onPointerDown={(e) => e.stopPropagation()}
+        onBlur={() => {
+          commit();
+          if (useStore.getState().lyricEdit === i) editLyric(null);
+        }}
+        aria-label="Lyric syllable"
+      />
+    </foreignObject>
   );
 }

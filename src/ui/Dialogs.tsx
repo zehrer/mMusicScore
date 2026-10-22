@@ -44,6 +44,8 @@ const KEYS: [string, string][] = [
   ["Click a note", "Select it; drag to change its pitch"],
   ["C D E F G A B", "Insert a note after the selection, in the nearest octave"],
   ["R or 0", "Insert a rest after the selection"],
+  ["Piano key", "Insert that note after the selection (View → Piano shows or hides it)"],
+  ["L", "Type lyrics under the selected note: Space or Tab goes to the next note, - joins syllables, Enter or Esc stops"],
   ["3 4 5 6 7", "Sixteenth, eighth, quarter, half, whole"],
   [".", "Dot on/off"],
   ["↑ ↓", "Move up / down one step"],

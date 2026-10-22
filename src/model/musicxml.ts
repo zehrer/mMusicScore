@@ -27,12 +27,13 @@ export function toMusicXML(song: Song): string {
       for (let i = m.start; i < m.end; i++) {
         const n = song.notes[i];
         const { actual, shown } = resolved[i];
+        const lyric = n.lyric && !n.rest ? lyricXML(n.lyric, joinedBefore(song.notes, i)) : "";
         const pitch = n.rest
           ? "<rest/>"
           : `<pitch><step>${STEP_NAMES[step(n.pitch)]}</step>${actual ? `<alter>${actual}</alter>` : ""}<octave>${octave(n.pitch)}</octave></pitch>`;
         parts.push(
           `<note>${pitch}<duration>${ticks(n)}</duration><voice>1</voice><type>${TYPE_NAMES[n.dur]}</type>${n.dots ? "<dot/>" : ""}` +
-            `${shown !== null ? `<accidental>${ACCIDENTAL_NAMES[shown]}</accidental>` : ""}</note>`,
+            `${shown !== null ? `<accidental>${ACCIDENTAL_NAMES[shown]}</accidental>` : ""}${lyric}</note>`,
         );
       }
       if (mi === measures.length - 1) parts.push('<barline location="right"><bar-style>light-heavy</bar-style></barline>');
@@ -50,6 +51,18 @@ ${body}
  </part>
 </score-partwise>
 `;
+}
+
+/** Whether the previous sung note's syllable ends with a hyphen, i.e. this one continues a word. */
+function joinedBefore(notes: NoteEvent[], i: number) {
+  for (let j = i - 1; j >= 0; j--) if (!notes[j].rest) return !!notes[j].lyric?.endsWith("-");
+  return false;
+}
+
+function lyricXML(lyric: string, continues: boolean) {
+  const joins = lyric.endsWith("-");
+  const syllabic = continues ? (joins ? "middle" : "end") : joins ? "begin" : "single";
+  return `<lyric number="1"><syllabic>${syllabic}</syllabic><text>${esc(lyric.replace(/-$/, ""))}</text></lyric>`;
 }
 
 const TYPES_BY_NAME: Record<string, Duration> = { whole: 1, half: 2, quarter: 4, eighth: 8, "16th": 16 };
@@ -111,6 +124,9 @@ export function fromMusicXML(text: string): Song {
             n.alter = alter;
             state.set(n.pitch, alter);
           }
+          const lyric = el.querySelector("lyric");
+          const text = txt(lyric, "text");
+          if (text) n.lyric = text + (["begin", "middle"].includes(txt(lyric, "syllabic")) ? "-" : "");
         } else {
           n.rest = true;
           const prev = song.notes[song.notes.length - 1];

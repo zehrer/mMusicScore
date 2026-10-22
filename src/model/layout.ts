@@ -56,8 +56,17 @@ const EXTRA_W = 10 * S;
 /** Natural width of a note: longer values get more room, roughly by the square root of their length. */
 export const noteWidth = (t: number, accidental: boolean) => S * (1.4 + 2.3 * Math.sqrt(t / 16)) + (accidental ? 1.3 * S : 0);
 
+/** Rough width of a lyric syllable in the score's font. */
+export const lyricWidth = (text: string) => text.replace(/-$/, "").length * 7.2;
+
 export function layoutScore(song: Song): ScoreLayout {
   const accidentals = resolveAccidentals(song);
+  // A note gets at least the room its syllable needs.
+  const slot = (j: number) => {
+    const n = song.notes[j];
+    const w = noteWidth(ticks(n), accidentals[j].shown !== null);
+    return n.lyric ? Math.max(w, lyricWidth(n.lyric) + (n.lyric.endsWith("-") ? 2 * S : 0.8 * S)) : w;
+  };
   const noteX: number[] = new Array(song.notes.length).fill(0);
   const measures = splitMeasures(song);
   const last = measures[measures.length - 1];
@@ -65,7 +74,7 @@ export function layoutScore(song: Song): ScoreLayout {
 
   const natural = measures.map((m, i) => {
     let w = PAD_L + PAD_R;
-    for (let j = m.start; j < m.end; j++) w += noteWidth(ticks(song.notes[j]), accidentals[j].shown !== null);
+    for (let j = m.start; j < m.end; j++) w += slot(j);
     return w + (appendInLast && i === measures.length - 1 ? APPEND_ROOM : 0);
   });
   const items: { m: (typeof measures)[number]; w: number; extra?: boolean }[] = measures.map((m, i) => ({ m, w: natural[i] }));
@@ -101,7 +110,7 @@ export function layoutScore(song: Song): ScoreLayout {
       for (let j = it.m.start; j < it.m.end; j++) {
         const acc = accidentals[j].shown !== null;
         noteX[j] = nx + (acc ? 1.3 * S * scale : 0);
-        nx += noteWidth(ticks(song.notes[j]), acc) * scale;
+        nx += slot(j) * scale;
       }
       const ml: MeasureLayout = { number: measures.indexOf(it.m) + 1, start: it.m.start, end: it.m.end, x, width, extra: it.extra };
       if (it.extra) ml.number = measures.length + 1;

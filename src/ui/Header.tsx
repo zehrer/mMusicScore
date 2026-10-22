@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deleteSong } from "../model/persist";
-import { change, deleteNote, redo, setMeta, undo, useStore } from "../model/store";
+import { change, deleteNote, redo, setMeta, setShowPiano, undo, useStore } from "../model/store";
 import * as A from "./actions";
 import { About, Shortcuts } from "./Dialogs";
 import { MenuList, type MenuItem } from "./Menu";
@@ -55,10 +55,15 @@ export function Header() {
     },
     {
       label: "View",
-      items: [50, 75, 100, 125, 150, 200].map((z) => ({
-        label: `${Math.round(s.zoom * 100) === z ? "✓ " : " "}${z} %`,
-        action: () => useStore.setState({ zoom: z / 100 }),
-      })),
+      items: [
+        { label: `${s.showPiano ? "✓ " : "\u2003"}Piano`, action: () => setShowPiano(!s.showPiano) },
+        "-",
+        { heading: "Zoom" },
+        ...[50, 75, 100, 125, 150, 200].map((z) => ({
+          label: `${Math.round(s.zoom * 100) === z ? "✓ " : "\u2003"}${z} %`,
+          action: () => useStore.setState({ zoom: z / 100 }),
+        })),
+      ],
     },
     {
       label: "Help",

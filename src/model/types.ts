@@ -13,6 +13,8 @@ export interface NoteEvent {
   pitch: number;
   /** Written accidental. Without one the note follows the key and earlier accidentals in its measure. */
   alter?: Alter;
+  /** Lyric syllable sung on this note; a trailing "-" joins it to the next one. */
+  lyric?: string;
 }
 
 export interface Song {

@@ -1,5 +1,5 @@
 import { DURATION_NAMES, DURATIONS, KEY_NAMES, pitchName, resolveAccidentals } from "../model/music";
-import { redo, setDuration, setMeta, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
+import { editLyric, redo, setDuration, setMeta, setShowPiano, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
 import type { Alter } from "../model/types";
 import * as A from "./actions";
 import { ACCIDENTAL, NOTE_ICON, REST } from "./glyphs";
@@ -45,6 +45,18 @@ export function Toolbar() {
       {alterBtn(1, "Sharp", "#")}
       {alterBtn(-1, "Flat", "-")}
       {alterBtn(0, "Natural", "=")}
+      <span className="sep" />
+      <button
+        className={s.lyricEdit !== null ? "on" : ""}
+        title="Lyrics: type text under the notes (L)"
+        disabled={!song.notes.length}
+        onClick={() => editLyric(s.lyricEdit !== null ? null : (s.sel ?? 0))}
+      >
+        Lyrics
+      </button>
+      <button className={s.showPiano ? "on" : ""} title="Show piano" onClick={() => setShowPiano(!s.showPiano)}>
+        Piano
+      </button>
       <span className="sep" />
       <button className={`play${s.isPlaying ? " on" : ""}`} title="Play / stop (Space)" disabled={!song.notes.length} onClick={A.togglePlay}>
         {s.isPlaying ? "■ Stop" : "▶ Play"}

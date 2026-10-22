@@ -108,6 +108,19 @@ main { flex: 1; min-height: 0; display: flex; }
 .library-foot button { flex: 1; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 4px 8px; }
 .library-foot button:hover:not(:disabled) { background: var(--hover); }
 
+/* --- Piano --- */
+.editor { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.piano { flex: none; display: flex; justify-content: safe center; overflow-x: auto; padding: 8px 16px 10px; background: #f1f3f4; border-top: 1px solid var(--line); }
+.piano svg { flex: none; touch-action: manipulation; user-select: none; }
+.piano .key { cursor: pointer; }
+.piano .white rect { fill: #fff; stroke: #9aa0a6; }
+.piano .black rect { fill: #2d2f31; stroke: #1f1f1f; }
+.piano .white:hover rect { fill: #e8f0fe; }
+.piano .black:hover rect { fill: #4a4d50; }
+.piano .key:active rect, .piano .lit rect { fill: var(--accent-soft); }
+.piano .black.lit rect, .piano .black:active rect { fill: var(--accent); }
+.piano text { font-size: 9px; fill: var(--muted); pointer-events: none; }
+
 /* --- Score: sheets of paper on a desk --- */
 .score { flex: 1; min-width: 0; overflow: auto; background: var(--desk); padding: 24px; display: flex; flex-direction: column; align-items: safe center; gap: 24px; }
 .page { flex: none; box-shadow: 0 1px 3px rgb(60 64 67 / 30%), 0 4px 12px rgb(60 64 67 / 12%); user-select: none; touch-action: none; }
@@ -123,6 +136,11 @@ main { flex: 1; min-height: 0; display: flex; }
 .measure-number { font: italic 11px Georgia, serif; fill: var(--muted); }
 .page-number { font: 12px Georgia, serif; fill: var(--muted); }
 .hint { font-size: 14px; fill: var(--muted); }
+.lyric { font: 14px Georgia, "Times New Roman", serif; fill: var(--ink); cursor: text; }
+.lyric-input {
+  display: block; width: 100%; height: 100%; border: 1px solid var(--accent); border-radius: 4px; padding: 0 4px;
+  font: 14px Georgia, "Times New Roman", serif; text-align: center; background: #fff; outline: none;
+}
 .hit-staff, .hit-note { fill: transparent; }
 .hit-staff { cursor: crosshair; }
 .hit-note { cursor: ns-resize; }
@@ -155,8 +173,8 @@ main { flex: 1; min-height: 0; display: flex; }
 /* --- Print: only the sheets --- */
 @page { size: A4; margin: 0; }
 @media print {
-  .header, .toolbar, .library, .edit-only { display: none !important; }
-  .app, main, .score { display: block; height: auto; overflow: visible; padding: 0; background: none; }
+  .header, .toolbar, .library, .piano, .edit-only { display: none !important; }
+  .app, main, .editor, .score { display: block; height: auto; overflow: visible; padding: 0; background: none; }
   .page { display: block; width: 210mm; height: 297mm; box-shadow: none; break-after: page; }
   .page:last-child { break-after: auto; }
   .note.sel, .note.playing { color: var(--ink); }
