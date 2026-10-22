@@ -9,16 +9,19 @@ import { MiniPlayer } from "./MiniPlayer";
 import { Piano } from "./Piano";
 import { Score } from "./Score";
 import { Toolbar } from "./Toolbar";
+import { ViewBar } from "./ViewBar";
 
 /** Note names; H is accepted as B, as in German. */
 const STEP_KEYS: Record<string, number> = { c: 0, d: 1, e: 2, f: 3, g: 4, a: 5, b: 6, h: 6 };
 
 function onKey(e: KeyboardEvent) {
   if ((e.target instanceof Element && e.target.closest("input, select, textarea, dialog")) || e.defaultPrevented) return;
-  const { sel, song } = useStore.getState();
+  const { sel, song, mode } = useStore.getState();
   const mod = e.metaKey || e.ctrlKey;
   const k = e.key;
   const handled = () => e.preventDefault();
+  // View mode only plays and moves the selection; nothing changes the song.
+  if (mode === "view" && !(!mod && [" ", "ArrowLeft", "ArrowRight", "Escape", "?"].includes(k)) && !(mod && k === "p")) return;
 
   if (mod) {
     if (k.toLowerCase() === "z") (e.shiftKey ? redo() : undo(), handled());
@@ -87,6 +90,7 @@ function onKey(e: KeyboardEvent) {
 
 export function App() {
   const showPiano = useStore((s) => s.showPiano);
+  const editing = useStore((s) => s.mode === "edit");
   useEffect(() => {
     addEventListener("keydown", onKey);
     const unlisten = A.listenClipboard();
@@ -98,16 +102,16 @@ export function App() {
   return (
     <div className="app">
       <Header />
-      <Toolbar />
+      {editing ? <Toolbar /> : <ViewBar />}
       <main>
         <Library />
         <div className="editor">
-          <FormBar />
+          {editing && <FormBar />}
           <div className="score-wrap">
             <Score />
             <MiniPlayer />
           </div>
-          {showPiano && <Piano />}
+          {editing && showPiano && <Piano />}
         </div>
       </main>
     </div>

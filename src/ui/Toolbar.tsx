@@ -1,5 +1,5 @@
 import { DURATION_NAMES, DURATIONS, KEY_NAMES, pitchName, resolveAccidentals } from "../model/music";
-import { editLyric, redo, setDuration, setMeta, setShowNames, setShowPiano, setZoom, stepZoom, ZOOM_STEPS, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
+import { editLyric, redo, setMode, setDuration, setMeta, setShowNames, setShowPiano, setZoom, stepZoom, ZOOM_STEPS, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
 import type { Alter } from "../model/types";
 import * as A from "./actions";
 import { ACCIDENTAL, NOTE_ICON, REST } from "./glyphs";
@@ -21,6 +21,10 @@ export function Toolbar() {
 
   return (
     <div className="toolbar">
+      <button className="view-btn" title="View mode: read and play, no editing" onClick={() => setMode("view")}>
+        View
+      </button>
+      <span className="sep" />
       <button title={`Undo (${MOD}Z)`} disabled={!s.undo.length} onClick={undo}>
         ↶
       </button>

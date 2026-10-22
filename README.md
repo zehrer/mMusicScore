@@ -22,6 +22,8 @@ Live: https://zehrer.github.io/mMusicScore/
 - **HTML export** (File → Export song as HTML): a single file that shows the score in any browser and plays it (▶ Play, or click a note to start there). Its **Open in mMusicScore** button adds the song to the app again; File → Import also reads the file.
 - **Print / PDF** via File → Print; only the score pages are printed.
 
+- **View mode**: a slim bar with song choice and a big **▶ Play**; tap a note to play from there. Phones start in it, ✎ Edit switches to all tools (and View back). On iPhone, playback also works with the ring/silent switch on (iOS 17 and later; older versions use a silent audio element for the same effect).
+
 ## Usage
 
 | | |

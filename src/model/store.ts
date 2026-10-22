@@ -55,6 +55,8 @@ interface State {
   playingSong: Song | null;
   /** For each note of `playingSong` (the form written out), its index in the song. */
   playingSrc: number[] | null;
+  /** View: read and play only, with a slim bar (the default on phones). Edit: all tools. */
+  mode: "view" | "edit";
   /** Compact: each section once, as written. Expanded: the form written out. */
   view: "compact" | "expanded";
   /** Chosen zoom: a factor, or fit the page width / the whole page into the window. */
@@ -88,6 +90,7 @@ export const useStore = create<State>(() => ({
   isPlaying: false,
   playingSong: null,
   playingSrc: null,
+  mode: isPhone() ? "view" : "edit",
   view: loadFlag("expanded", false) ? "expanded" : "compact",
   zoom: loadZoom(),
   viewZoom: 1,
@@ -109,6 +112,19 @@ function loadFlag(key: string, def: boolean) {
   } catch {
     return def;
   }
+}
+
+/** Narrow screens start in view mode, where the score and the play button get the room. */
+function isPhone() {
+  try {
+    return matchMedia("(max-width: 700px)").matches;
+  } catch {
+    return false;
+  }
+}
+
+export function setMode(mode: "view" | "edit") {
+  set({ mode, lyricEdit: null, ...(mode === "view" && { anchor: null }) });
 }
 
 /** Remembers a view setting in this browser; storage can be unavailable, then it is only kept for now. */

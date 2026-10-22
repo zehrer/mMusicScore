@@ -128,8 +128,10 @@ ${pages}
 
   function play(from) {
     stop();
+    // iPhone: play even with the ring/silent switch on (iOS 17+).
+    try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
     ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
-    if (ctx.state === "suspended") ctx.resume();
+    if (ctx.state !== "running") ctx.resume();
     var master = ctx.createGain();
     master.connect(ctx.destination);
     var start = ctx.currentTime + 0.08, t = start, times = [];

@@ -4,9 +4,59 @@ import type { Song } from "./types";
 let ctx: AudioContext | null = null;
 let stopCurrent: (() => void) | null = null;
 
+/**
+ * On iPhone and iPad, Web Audio is silent while the ring/silent switch is on, unless the page
+ * asks to be a media player. iOS 17+ has navigator.audioSession for that; older versions switch
+ * when an <audio> element plays, so a silent one loops while the page is visible.
+ */
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+let silent: HTMLAudioElement | null = null;
+
+function silentWav() {
+  // 0.1 s of 8-bit mono silence at 8 kHz.
+  const n = 800;
+  const b = new Uint8Array(44 + n);
+  const v = new DataView(b.buffer);
+  const str = (o: number, t: string) => [...t].forEach((c, i) => (b[o + i] = c.charCodeAt(0)));
+  str(0, "RIFF");
+  v.setUint32(4, 36 + n, true);
+  str(8, "WAVEfmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, 8000, true);
+  v.setUint32(28, 8000, true);
+  v.setUint16(32, 1, true);
+  v.setUint16(34, 8, true);
+  str(36, "data");
+  v.setUint32(40, n, true);
+  b.fill(128, 44);
+  return "data:audio/wav;base64," + btoa(String.fromCharCode(...b));
+}
+
+function playbackCategory() {
+  const session = (navigator as Navigator & { audioSession?: { type: string } }).audioSession;
+  if (session) {
+    try {
+      session.type = "playback";
+    } catch {
+      /* not allowed here */
+    }
+    return;
+  }
+  if (!isIOS()) return;
+  if (!silent) {
+    silent = Object.assign(new Audio(silentWav()), { loop: true });
+    silent.setAttribute("playsinline", "");
+    document.addEventListener("visibilitychange", () => (document.hidden ? silent?.pause() : void silent?.play().catch(() => {})));
+  }
+  void silent.play().catch(() => {});
+}
+
 function audio() {
-  ctx ??= new AudioContext();
-  if (ctx.state === "suspended") void ctx.resume();
+  playbackCategory();
+  ctx ??= new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)();
+  if (ctx.state !== "running") void ctx.resume();
   return ctx;
 }
 
@@ -36,6 +86,21 @@ function tone(ac: AudioContext, out: AudioNode, m: number, at: number, len: numb
     return o;
   });
   return () => oscs.forEach((o) => o.stop());
+}
+
+/**
+ * iOS starts audio only from a completed tap (touchend or click), not from pointerdown, which the
+ * piano and note entry use; the first tap anywhere therefore wakes the audio context up.
+ */
+export function unlockAudioOnFirstTap() {
+  const unlock = () => {
+    ctx ??= new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)();
+    if (ctx.state !== "running") void ctx.resume();
+    document.removeEventListener("touchend", unlock);
+    document.removeEventListener("click", unlock);
+  };
+  document.addEventListener("touchend", unlock);
+  document.addEventListener("click", unlock);
 }
 
 /** Plays one note right away, e.g. when it is entered or moved. */

@@ -88,6 +88,13 @@ export function printScore() {
   setTimeout(() => print(), 50);
 }
 
+/** Starts playback at note `i` (view mode: tap a note), also while playing. */
+export function playFrom(i: number) {
+  if (state().isPlaying) stop();
+  useStore.setState({ sel: i, anchor: null });
+  togglePlay();
+}
+
 /**
  * Plays the song through its form, from the selected note's first appearance (or the beginning),
  * or stops playback.

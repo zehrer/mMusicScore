@@ -4,6 +4,7 @@ import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, noteLabel, pi
 import { expand, formOf, sectionRange, sectionsOf, verseOf } from "../model/sections";
 import { auditionAt, editLyric, hasSections, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
+import { playFrom } from "./actions";
 import { follow } from "./follow";
 import { ACCIDENTAL, G, REST } from "./glyphs";
 
@@ -28,6 +29,7 @@ export function Score() {
   const playing = useStore(playingHere);
   const playingSrc = useStore((s) => s.playingSrc);
   const view = useStore((s) => s.view);
+  const editing = useStore((s) => s.mode === "edit");
   const root = useRef<HTMLDivElement>(null);
   const zoomMode = useStore((s) => s.zoom);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -67,7 +69,7 @@ export function Score() {
   const inSel = (k: number) => !!range && src(k) >= range[0] && src(k) <= range[1];
   const caretTarget = range ? range[1] : song.notes.length - 1;
   const caretK = caretTarget < 0 ? null : shown.src ? shown.src.indexOf(caretTarget) : caretTarget;
-  const caret = dPlaying === null && lyricEdit === null && (caretK !== -1 || !song.notes.length) ? caretAt(dsong, systems, layout.noteX, caretK === -1 ? null : caretK) : null;
+  const caret = editing && dPlaying === null && lyricEdit === null && (caretK !== -1 || !song.notes.length) ? caretAt(dsong, systems, layout.noteX, caretK === -1 ? null : caretK) : null;
 
   // Keep the selected or sounding note in view.
   useEffect(() => {
@@ -120,7 +122,7 @@ export function Score() {
   const onNoteUp = () => (drag.current = null);
 
   return (
-    <div className="score" ref={root} onPointerLeave={() => setHover(null)}>
+    <div className={`score${editing ? "" : " viewing"}`} ref={root} onPointerLeave={() => setHover(null)}>
       {layout.pages.map((systems, pi) => (
         <svg
           key={pi}
@@ -155,7 +157,7 @@ export function Score() {
                   />
                 )}
                 <Staff sys={sys} song={dsong} final={sys.measures.some((m) => m.end === dsong.notes.length && !m.extra) && dsong.notes.length > 0} />
-                <rect
+                {editing && <rect
                   className="hit-staff"
                   x={sys.contentX}
                   y={sys.y - 5 * S}
@@ -164,7 +166,7 @@ export function Score() {
                   onPointerMove={(e) => onMove(e, sys)}
                   onPointerLeave={() => setHover(null)}
                   onPointerDown={(e) => onClick(e, sys)}
-                />
+                />}
                 {dsong.notes.slice(sys.start, sys.end).map((n, j) => {
                   const k = sys.start + j;
                   const x = layout.noteX[k];
@@ -178,7 +180,9 @@ export function Score() {
                         y={n.rest ? sys.y - S : y - 1.1 * S}
                         width={HEAD_W(n.dur) + S}
                         height={n.rest ? 6 * S : 2.2 * S}
-                        onPointerDown={(e) => onNoteDown(e, k)}
+                        // View mode plays on click: iOS starts audio only from a completed tap.
+                        onPointerDown={editing ? (e) => onNoteDown(e, k) : undefined}
+                        onClick={editing ? undefined : () => playFrom(src(k))}
                         onPointerMove={onNoteMove}
                         onPointerUp={onNoteUp}
                         onPointerEnter={() => setHover(null)}
@@ -194,7 +198,7 @@ export function Score() {
                   noteX={layout.noteX}
                   verses={layout.verses}
                   editing={!expanded && lyricEdit !== null ? { i: lyricEdit, v: lyricVerse } : null}
-                  onEdit={expanded ? undefined : (i, v) => editLyric(i, v)}
+                  onEdit={expanded || !editing ? undefined : (i, v) => editLyric(i, v)}
                 />
                 {names && <NoteNames sys={sys} song={dsong} noteX={layout.noteX} accidentals={layout.accidentals} style={names} />}
                 {caret?.sys === sys && (
