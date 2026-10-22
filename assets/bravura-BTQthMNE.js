@@ -1,0 +1,1 @@
+var e=`/mMusicScore/assets/bravura-CBWYXOFh.woff2`;export{e as default};
