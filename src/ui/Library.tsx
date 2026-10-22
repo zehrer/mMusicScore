@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { openSaved } from "../model/persist";
+import { useStore } from "../model/store";
+import type { SongInfo } from "../model/types";
+import * as A from "./actions";
+import { MenuList } from "./Menu";
+
+/** The song database: every song saved in this browser. */
+export function Library() {
+  const songs = useStore((s) => s.songs);
+  const current = useStore((s) => s.song);
+  const [query, setQuery] = useState("");
+  const [menu, setMenu] = useState<{ info: SongInfo; x: number; y: number } | null>(null);
+  // The open song shows its live title before the next autosave.
+  const list = songs.some((s) => s.id === current.id) ? songs.map((s) => (s.id === current.id ? { ...s, title: current.title, composer: current.composer } : s)) : songs;
+  const q = query.trim().toLowerCase();
+  const shown = q ? list.filter((s) => `${s.title} ${s.composer}`.toLowerCase().includes(q)) : list;
+
+  const withSong = async (info: SongInfo, fn: () => unknown) => {
+    await openSaved(info.id);
+    fn();
+  };
+
+  return (
+    <aside className="library">
+      <div className="library-head">
+        <h2>Lieder</h2>
+        <button className="new" onClick={A.newSong} title="Neues Lied">
+          ＋ Neu
+        </button>
+      </div>
+      <input className="search" type="search" placeholder="Suchen…" value={query} onChange={(e) => setQuery(e.target.value)} />
+      <ul>
+        {shown.map((s) => (
+          <li
+            key={s.id}
+            className={s.id === current.id ? "on" : ""}
+            onClick={() => openSaved(s.id)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setMenu({ info: s, x: e.clientX, y: e.clientY });
+            }}
+          >
+            <div className="song-name">{s.title || "Ohne Titel"}</div>
+            <div className="song-meta">
+              {s.composer && <span>{s.composer} · </span>}
+              {new Date(s.updatedAt).toLocaleDateString()}
+            </div>
+            <button
+              className="more"
+              title="Weitere Aktionen"
+              onClick={(e) => {
+                e.stopPropagation();
+                const r = e.currentTarget.getBoundingClientRect();
+                setMenu({ info: s, x: r.left, y: r.bottom });
+              }}
+            >
+              ⋯
+            </button>
+          </li>
+        ))}
+        {!shown.length && <li className="empty">{q ? "Keine Treffer" : "Noch keine Lieder"}</li>}
+      </ul>
+      <div className="library-foot">
+        <button onClick={A.importFile}>Importieren…</button>
+        <button onClick={A.exportLibrary} disabled={!songs.length}>
+          Exportieren
+        </button>
+      </div>
+      {menu && (
+        <MenuList
+          at={menu}
+          onClose={() => setMenu(null)}
+          items={[
+            { label: "Öffnen", action: () => openSaved(menu.info.id) },
+            { label: "Duplizieren", action: () => withSong(menu.info, () => A.duplicateSong()) },
+            { label: "Exportieren als MusicXML", action: () => withSong(menu.info, () => A.exportMusicXML()) },
+            { label: "Exportieren als JSON", action: () => withSong(menu.info, () => A.exportSongJSON()) },
+            "-",
+            { label: "Löschen…", action: () => A.confirmDelete(menu.info.id, menu.info.title) },
+          ]}
+        />
+      )}
+    </aside>
+  );
+}
