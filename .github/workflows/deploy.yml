@@ -19,6 +19,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history: the build counts commits for the version's patch number.
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@v4

@@ -25,8 +25,11 @@ export function extractSongJSON(html: string): string | null {
   return doc.getElementById(DATA_ID)?.textContent ?? null;
 }
 
-/** `pages` is the rendered SVG markup, `font` the Bravura woff2 as base64. */
-export function toHTML(song: Song, pages: string, font: string, appUrl: string): string {
+/**
+ * `pages` is the rendered SVG markup of `played` (the form written out, whose note indices the
+ * page plays), `font` the Bravura woff2 as base64. `song` is embedded as written.
+ */
+export function toHTML(song: Song, pages: string, font: string, appUrl: string, played: Song = song): string {
   const title = song.title || "Untitled";
   return `<!doctype html>
 <html lang="en">
@@ -59,6 +62,8 @@ export function toHTML(song: Song, pages: string, font: string, appUrl: string):
   .measure-number { font: italic 11px Georgia, serif; fill: #5f6368; }
   .page-number { font: 12px Georgia, serif; fill: #5f6368; }
   .note-names text { font: 600 11px -apple-system, "Segoe UI", Roboto, Arial, sans-serif; fill: #444746; }
+  .section-label rect { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
+  .section-label text { font: bold 13px Georgia, "Times New Roman", serif; fill: currentColor; }
   .lyric { font: 14px Georgia, "Times New Roman", serif; fill: #111; }
   .note { cursor: pointer; }
   .note:hover { color: #0b57d0; }
@@ -84,7 +89,7 @@ export function toHTML(song: Song, pages: string, font: string, appUrl: string):
 ${pages}
 <script type="application/json" id="${DATA_ID}">${scriptSafe(songToJSON(song))}</script>
 <script>
-  var EVENTS = ${JSON.stringify(playbackEvents(song))};
+  var EVENTS = ${JSON.stringify(playbackEvents(played))};
   var APP = ${scriptSafe(JSON.stringify(appUrl))};
   var ctx = null, stopAt = null, raf = 0;
   var btn = document.getElementById("play");

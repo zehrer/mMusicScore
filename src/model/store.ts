@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { clampPitch, emptySong, midi, nearestPitch, newId, resolveAccidentals, type NameStyle } from "./music";
 import { audition } from "./playback";
+import { addSection, deleteSection, renameSection, sectionsOf, setForm, splitSection, verseOf, withVerse } from "./sections";
 import type { Alter, Duration, NoteEvent, Song, SongInfo } from "./types";
 
 const UNDO_LIMIT = 200;
@@ -52,6 +53,10 @@ interface State {
   isPlaying: boolean;
   /** The song as it was when playback started; other songs can be opened meanwhile. */
   playingSong: Song | null;
+  /** For each note of `playingSong` (the form written out), its index in the song. */
+  playingSrc: number[] | null;
+  /** Compact: each section once, as written. Expanded: the form written out. */
+  view: "compact" | "expanded";
   /** Chosen zoom: a factor, or fit the page width / the whole page into the window. */
   zoom: Zoom;
   /** Zoom actually shown, which the score works out for the fit modes. */
@@ -63,6 +68,8 @@ interface State {
   nameStyle: NameStyle;
   /** Note whose lyric syllable is being typed. */
   lyricEdit: number | null;
+  /** Lyric line being typed: 0 = first verse. */
+  lyricVerse: number;
   /** Bumped by every change of the song, which schedules an autosave. */
   revision: number;
   savedAt: Date | null;
@@ -80,6 +87,8 @@ export const useStore = create<State>(() => ({
   playing: null,
   isPlaying: false,
   playingSong: null,
+  playingSrc: null,
+  view: loadFlag("expanded", false) ? "expanded" : "compact",
   zoom: loadZoom(),
   viewZoom: 1,
   dialog: null,
@@ -87,6 +96,7 @@ export const useStore = create<State>(() => ({
   showNames: loadFlag("showNames", false),
   nameStyle: loadNameStyle(),
   lyricEdit: null,
+  lyricVerse: 0,
   revision: 0,
   savedAt: null,
   saveError: null,
@@ -221,11 +231,23 @@ export function auditionAt(i: number) {
   audition(midi(n.pitch, resolveAccidentals(song)[i].actual));
 }
 
-export function insertNote(index: number, pitch: number, rest = get().input.rest) {
+/**
+ * Section for notes entered at the insertion point: the selected note's, or the last section's at
+ * the end. Clicks pass the section of the system they hit.
+ */
+function sectionForInsert(): string | undefined {
+  const { song } = get();
+  if (!song.sections?.length) return undefined;
+  const r = selRange(get());
+  return (r && song.notes[r[1]]?.sec) || song.sections[song.sections.length - 1].id;
+}
+
+export function insertNote(index: number, pitch: number, rest = get().input.rest, sec = sectionForInsert()) {
   const { dur, dots } = get().input;
   const n: NoteEvent = { id: newId(), dur, pitch: clampPitch(pitch) };
   if (dots) n.dots = 1;
   if (rest) n.rest = true;
+  if (sec) n.sec = sec;
   change(updateNotes((ns) => [...ns.slice(0, index), n, ...ns.slice(index)]), { sel: index });
   auditionAt(index);
 }
@@ -244,24 +266,62 @@ export function insertPitch(pitch: number, alter: Alter) {
   const index = insertionPoint();
   const n: NoteEvent = { id: newId(), dur: input.dur, pitch: clampPitch(pitch), alter };
   if (input.dots) n.dots = 1;
+  const sec = sectionForInsert();
+  if (sec) n.sec = sec;
   change(updateNotes((ns) => [...ns.slice(0, index), n, ...ns.slice(index)]), { sel: index });
   if (input.rest) set({ input: { ...input, rest: false } });
   auditionAt(index);
 }
 
-/** Sets the lyric syllable of note `i`; a trailing "-" joins it to the next syllable. */
-export function setLyric(i: number, lyric: string) {
+/** Sets the syllable of verse `v` on note `i`; a trailing "-" joins it to the next syllable. */
+export function setLyric(i: number, lyric: string, v = 0) {
   const n = get().song.notes[i];
-  if (!n || (n.lyric ?? "") === lyric) return;
-  updateNote(i, { lyric: lyric || undefined });
+  if (!n || (verseOf(n, v) ?? "") === lyric) return;
+  change(updateNotes((ns) => ns.map((m, j) => (j === i ? withVerse(m, v, lyric) : m))));
 }
 
-/** Starts typing lyrics at note `i` (the selection, or the first note). */
-export function editLyric(i: number | null) {
+/** Starts typing lyrics at note `i` (the selection, or the first note), in verse `v`. */
+export function editLyric(i: number | null, v = get().lyricVerse) {
   const { song } = get();
   if (i === null || !song.notes[i]) return set({ lyricEdit: null });
-  set({ lyricEdit: i, sel: i, anchor: null });
+  // Lyrics are typed where each verse has its own line: in the compact view.
+  set({ lyricEdit: i, lyricVerse: Math.max(0, Math.min(9, v)), sel: i, anchor: null, view: "compact" });
 }
+
+export function setView(view: "compact" | "expanded") {
+  set({ view, lyricEdit: null });
+  remember("expanded", view === "expanded" ? "1" : "0");
+}
+
+// --- Sections and form ----------------------------------------------------------------------
+
+/** Starts a new section at the selected note (its first note if a range is selected). */
+export function splitAtSelection(name: string) {
+  const r = selRange(get());
+  if (!r) return;
+  const before = get().song;
+  const next = splitSection(before, r[0], name);
+  if (next !== before) change(() => next);
+}
+
+/** Adds an empty section at the end of the song and of the form. */
+export function newSection(name: string) {
+  change((s) => addSection(s, name).song, { sel: null });
+}
+
+export function renameSectionTo(id: string, name: string) {
+  change((s) => renameSection(s, id, name));
+}
+
+export function removeSection(id: string) {
+  change((s) => deleteSection(s, id), { sel: null });
+}
+
+export function changeForm(form: string[]) {
+  change((s) => setForm(s, form));
+}
+
+export const hasSections = (song: Song) => sectionsOf(song).length > 1 || !!sectionsOf(song)[0].name;
 
 export function insertRest() {
   const { song } = get();
@@ -359,7 +419,13 @@ export function selectedNotes(): NoteEvent[] {
 export function pasteNotes(notes: NoteEvent[]) {
   if (!notes.length) return;
   const at = insertionPoint();
-  const copies = notes.map((n) => ({ ...n, id: newId() }));
+  const sec = sectionForInsert();
+  const copies = notes.map((n) => {
+    const copy = { ...n, id: newId() };
+    if (sec) copy.sec = sec;
+    else delete copy.sec;
+    return copy;
+  });
   change(updateNotes((ns) => [...ns.slice(0, at), ...copies, ...ns.slice(at)]), { sel: at + copies.length - 1, anchor: copies.length > 1 ? at : null });
 }
 

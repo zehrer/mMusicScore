@@ -15,6 +15,16 @@ export interface NoteEvent {
   alter?: Alter;
   /** Lyric syllable sung on this note; a trailing "-" joins it to the next one. */
   lyric?: string;
+  /** Syllables of further verses (verse 2, 3, …) under the same note. */
+  verses?: string[];
+  /** Section the note belongs to; without one it is in the first section. */
+  sec?: string;
+}
+
+/** A part of a song (verse, chorus, …) written once and played wherever the form lists it. */
+export interface Section {
+  id: string;
+  name: string;
 }
 
 export interface Song {
@@ -28,7 +38,12 @@ export interface Song {
   /** Key signature: number of sharps (> 0) or flats (< 0). */
   fifths: number;
   clef: Clef;
+  /** Notes of all sections, section after section in the order of `sections`. */
   notes: NoteEvent[];
+  /** Without sections the song is a single unnamed section. */
+  sections?: Section[];
+  /** Order in which sections are played, by id; may repeat. Without one, each section once. */
+  form?: string[];
   createdAt: number;
   updatedAt: number;
 }

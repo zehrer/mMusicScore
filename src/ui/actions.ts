@@ -6,6 +6,7 @@ import { fromMusicXML, toMusicXML } from "../model/musicxml";
 import { addSong, addSongs, deleteSong, loadAll } from "../model/persist";
 import { play, stop } from "../model/playback";
 import { sampleSongs } from "../model/samples";
+import { expand } from "../model/sections";
 import { deleteSelection, pasteNotes, selectedNotes, useStore } from "../model/store";
 import type { NoteEvent, Song } from "../model/types";
 
@@ -75,9 +76,11 @@ async function fontBase64() {
 export async function exportHTML(song: Song = state().song) {
   // The renderer is only loaded for an export.
   const [{ renderToStaticMarkup }, { StaticScore }, font] = await Promise.all([import("react-dom/server"), import("./StaticScore"), fontBase64()]);
+  // The page shows and plays the form written out; the original song is embedded for re-import.
   const { showNames, nameStyle } = state();
-  const pages = renderToStaticMarkup(createElement(StaticScore, { song, names: showNames ? nameStyle : null }));
-  download(fileName(song.title, "html"), toHTML(song, pages, font, location.origin + location.pathname), "text/html");
+  const played = expand(song).song;
+  const pages = renderToStaticMarkup(createElement(StaticScore, { song: played, names: showNames ? nameStyle : null }));
+  download(fileName(song.title, "html"), toHTML(song, pages, font, location.origin + location.pathname, played), "text/html");
 }
 
 export function printScore() {
@@ -85,17 +88,22 @@ export function printScore() {
   setTimeout(() => print(), 50);
 }
 
-/** Starts playback at the selection (or the beginning), or stops it. */
+/**
+ * Plays the song through its form, from the selected note's first appearance (or the beginning),
+ * or stops playback.
+ */
 export function togglePlay() {
   const { isPlaying, song, sel } = state();
   if (isPlaying) return stop();
-  if (!song.notes.length) return;
-  useStore.setState({ isPlaying: true, playingSong: song, playing: null });
+  const { song: played, src } = expand(song);
+  if (!played.notes.length) return;
+  const from = sel === null ? 0 : Math.max(0, src.indexOf(sel));
+  useStore.setState({ isPlaying: true, playingSong: played, playingSrc: src, playing: null });
   play(
-    song,
-    sel ?? 0,
+    played,
+    from,
     (i) => useStore.setState({ playing: i }),
-    () => useStore.setState({ playing: null, isPlaying: false, playingSong: null }),
+    () => useStore.setState({ playing: null, isPlaying: false, playingSong: null, playingSrc: null }),
   );
 }
 

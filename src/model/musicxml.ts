@@ -1,4 +1,5 @@
 import { clampPitch, durationForTicks, emptySong, keyAlter, newId, octave, resolveAccidentals, splitMeasures, step, STEP_NAMES, ticks } from "./music";
+import { expand } from "./sections";
 import type { Alter, Duration, NoteEvent, Song } from "./types";
 
 /** Ticks per quarter; MusicXML's <divisions>. */
@@ -9,7 +10,10 @@ const ACCIDENTAL_NAMES: Record<Alter, string> = { [-1]: "flat", 0: "natural", 1:
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /** Single-part MusicXML 4.0, readable by MuseScore, Finale, Sibelius, Dorico … */
-export function toMusicXML(song: Song): string {
+export function toMusicXML(written: Song): string {
+  // Other programs get the form written out; each section's start carries its name.
+  const song = expand(written).song;
+  const names = new Map((song.sections ?? []).map((x) => [x.id, x.name]));
   const resolved = resolveAccidentals(song);
   const measures = splitMeasures(song);
   if (!measures.length) measures.push({ start: 0, end: 0, ticks: 0 });
@@ -24,6 +28,9 @@ export function toMusicXML(song: Song): string {
           `<direction placement="above"><direction-type><metronome><beat-unit>quarter</beat-unit><per-minute>${song.tempo}</per-minute></metronome></direction-type><sound tempo="${song.tempo}"/></direction>`,
         );
       }
+      const sec = song.notes[m.start]?.sec;
+      const label = sec && sec !== song.notes[m.start - 1]?.sec ? names.get(sec) : "";
+      if (label) parts.push(`<direction placement="above"><direction-type><rehearsal>${esc(label)}</rehearsal></direction-type></direction>`);
       for (let i = m.start; i < m.end; i++) {
         const n = song.notes[i];
         const { actual, shown } = resolved[i];

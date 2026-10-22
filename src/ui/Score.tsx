@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
-import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, yPitch, type SystemLayout } from "../model/layout";
+import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, VERSE_DY, yPitch, type SystemLayout } from "../model/layout";
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, noteLabel, pitchName, type NameStyle, type Resolved } from "../model/music";
-import { auditionAt, editLyric, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
+import { expand, formOf, sectionRange, sectionsOf, verseOf } from "../model/sections";
+import { auditionAt, editLyric, hasSections, insertNote, playingHere, recordUndo, select, selRange, setLyric, updateNote, useStore } from "../model/store";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
 import { follow } from "./follow";
 import { ACCIDENTAL, G, REST } from "./glyphs";
@@ -25,6 +26,8 @@ export function Score() {
   const anchor = useStore((s) => s.anchor);
   const range = selRange({ sel, anchor });
   const playing = useStore(playingHere);
+  const playingSrc = useStore((s) => s.playingSrc);
+  const view = useStore((s) => s.view);
   const root = useRef<HTMLDivElement>(null);
   const zoomMode = useStore((s) => s.zoom);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -43,23 +46,44 @@ export function Score() {
   useEffect(() => useStore.setState({ viewZoom: zoom }), [zoom]);
   const input = useStore((s) => s.input);
   const lyricEdit = useStore((s) => s.lyricEdit);
+  const lyricVerse = useStore((s) => s.lyricVerse);
   const names = useStore((s) => (s.showNames ? s.nameStyle : null));
-  const layout = useMemo(() => layoutScore(song), [song]);
+
+  // What is shown: the song as written (compact) or its form written out (expanded). `src` maps a
+  // shown note to the note of the song it stands for; every edit goes to that note.
+  const sectioned = hasSections(song);
+  const expanded = view === "expanded" && sectioned;
+  const shown = useMemo(() => (expanded ? expand(song) : { song, src: null }), [song, expanded]);
+  const dsong = shown.song;
+  const src = (k: number) => (shown.src ? shown.src[k] : k);
+  const formLine = sectioned && !expanded;
+  const layout = useMemo(() => layoutScore(dsong, { formLine }), [dsong, formLine]);
   const [hover, setHover] = useState<Hover>(null);
   const drag = useRef<Drag>(null);
   const bottom = BOTTOM_LINE[song.clef];
   const systems = layout.pages.flat();
-  const caret = playing === null && lyricEdit === null ? caretAt(song, systems, layout.noteX, range ? range[1] : null) : null;
-  // Highlighted span: the sounding note during playback, else the selection.
-  const span: [number, number] | null = playing !== null ? [playing, playing] : range;
+  // Playback runs through the form; in the compact view its notes map back to the written ones.
+  const dPlaying = playing === null ? null : expanded || !playingSrc ? playing : (playingSrc[playing] ?? null);
+  const inSel = (k: number) => !!range && src(k) >= range[0] && src(k) <= range[1];
+  const caretTarget = range ? range[1] : song.notes.length - 1;
+  const caretK = caretTarget < 0 ? null : shown.src ? shown.src.indexOf(caretTarget) : caretTarget;
+  const caret = dPlaying === null && lyricEdit === null && (caretK !== -1 || !song.notes.length) ? caretAt(dsong, systems, layout.noteX, caretK === -1 ? null : caretK) : null;
 
   // Keep the selected or sounding note in view.
   useEffect(() => {
     const box = root.current;
     const el = box?.querySelector(".note.playing, .note.cur");
-    if (box && el) follow(box, el, playing !== null);
-  }, [sel, playing, layout, zoom]);
+    if (box && el) follow(box, el, dPlaying !== null);
+  }, [sel, dPlaying, layout, zoom]);
 
+  /** Song index and section a click into `sys` inserts at. */
+  const insertAt = (sys: SystemLayout, x: number): [number, string | undefined] => {
+    const sec = song.sections?.length ? sys.section.split("~")[0] : undefined;
+    const k = insertIndex(sys, layout.noteX, x);
+    if (k < sys.end) return [src(k), sec];
+    if (sys.end > sys.start) return [src(sys.end - 1) + 1, sec];
+    return [sec ? sectionRange(song, sec)[1] : sys.start, sec];
+  };
   const onMove = (e: RPointerEvent, sys: SystemLayout) => {
     if (drag.current) return;
     const p = svgPoint(e, e.currentTarget);
@@ -67,11 +91,13 @@ export function Score() {
   };
   const onClick = (e: RPointerEvent, sys: SystemLayout) => {
     const p = svgPoint(e, e.currentTarget);
-    insertNote(insertIndex(sys, layout.noteX, p.x), clampPitch(yPitch(sys, p.y, bottom)));
+    const [index, sec] = insertAt(sys, p.x);
+    insertNote(index, clampPitch(yPitch(sys, p.y, bottom)), undefined, sec);
   };
 
-  const onNoteDown = (e: RPointerEvent, i: number) => {
+  const onNoteDown = (e: RPointerEvent, k: number) => {
     e.stopPropagation();
+    const i = src(k);
     if (e.shiftKey) return select(i, true);
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
     select(i);
@@ -105,84 +131,102 @@ export function Score() {
           onPointerDown={(e) => e.target === e.currentTarget && select(null)}
         >
           <rect className="paper" width={PAGE_W} height={PAGE_H} onPointerDown={() => select(null)} />
-          {pi === 0 && <Heading song={song} />}
-          {systems.map((sys, si) => (
-            <g key={si} className={sys.measures.every((m) => m.extra) ? "edit-only" : undefined}>
-              {span && span[0] < sys.end && span[1] >= sys.start && song.notes[Math.min(span[1], sys.end - 1)] && (() => {
-                const a = Math.max(span[0], sys.start);
-                const b = Math.min(span[1], sys.end - 1);
-                const x = layout.noteX[a] - 0.7 * S;
-                return (
+          {pi === 0 && <Heading song={song} form={formLine ? formText(song) : undefined} />}
+          {systems.map((sys, si) => {
+            // Highlight: the sounding note, else the selected notes of this system.
+            let a = -1;
+            let b = -1;
+            for (let k = sys.start; k < sys.end; k++) {
+              if (dPlaying !== null ? k === dPlaying : inSel(k)) {
+                if (a < 0) a = k;
+                b = k;
+              }
+            }
+            return (
+              <g key={si} className={sys.measures.every((m) => m.extra) ? "edit-only" : undefined}>
+                {a >= 0 && (
                   <rect
-                    className={`highlight edit-only${playing !== null ? " playing" : ""}`}
-                    x={x}
+                    className={`highlight edit-only${dPlaying !== null ? " playing" : ""}`}
+                    x={layout.noteX[a] - 0.7 * S}
                     y={sys.y - 2 * S}
-                    width={layout.noteX[b] + HEAD_W(song.notes[b].dur) + 0.7 * S - x}
+                    width={layout.noteX[b] + HEAD_W(dsong.notes[b].dur) + 1.4 * S - layout.noteX[a]}
                     height={8 * S}
                     rx={0.5 * S}
                   />
-                );
-              })()}
-              <Staff sys={sys} song={song} final={sys.measures.some((m) => m.end === song.notes.length && !m.extra) && song.notes.length > 0} />
-              <rect
-                className="hit-staff"
-                x={sys.contentX}
-                y={sys.y - 5 * S}
-                width={sys.x1 - sys.contentX}
-                height={14 * S}
-                onPointerMove={(e) => onMove(e, sys)}
-                onPointerLeave={() => setHover(null)}
-                onPointerDown={(e) => onClick(e, sys)}
-              />
-              {song.notes.slice(sys.start, sys.end).map((n, k) => {
-                const i = sys.start + k;
-                const x = layout.noteX[i];
-                const y = n.rest ? sys.y + 2 * S : pitchY(sys, n.pitch, bottom);
-                return (
-                  <g key={n.id} className={`note${range && i >= range[0] && i <= range[1] ? " sel" : ""}${i === sel ? " cur" : ""}${i === playing ? " playing" : ""}`}>
-                    <NoteGlyph n={n} x={x} y={y} sys={sys} bottom={bottom} clef={song.clef} shown={layout.accidentals[i].shown} />
-                    <rect
-                      className="hit-note"
-                      x={x - 0.5 * S}
-                      y={n.rest ? sys.y - S : y - 1.1 * S}
-                      width={HEAD_W(n.dur) + S}
-                      height={n.rest ? 6 * S : 2.2 * S}
-                      onPointerDown={(e) => onNoteDown(e, i)}
-                      onPointerMove={onNoteMove}
-                      onPointerUp={onNoteUp}
-                      onPointerEnter={() => setHover(null)}
-                    >
-                      <title>{n.rest ? "Rest" : pitchName(n.pitch, layout.accidentals[i].actual)}</title>
-                    </rect>
+                )}
+                <Staff sys={sys} song={dsong} final={sys.measures.some((m) => m.end === dsong.notes.length && !m.extra) && dsong.notes.length > 0} />
+                <rect
+                  className="hit-staff"
+                  x={sys.contentX}
+                  y={sys.y - 5 * S}
+                  width={sys.x1 - sys.contentX}
+                  height={14 * S}
+                  onPointerMove={(e) => onMove(e, sys)}
+                  onPointerLeave={() => setHover(null)}
+                  onPointerDown={(e) => onClick(e, sys)}
+                />
+                {dsong.notes.slice(sys.start, sys.end).map((n, j) => {
+                  const k = sys.start + j;
+                  const x = layout.noteX[k];
+                  const y = n.rest ? sys.y + 2 * S : pitchY(sys, n.pitch, bottom);
+                  return (
+                    <g key={n.id} className={`note${inSel(k) ? " sel" : ""}${src(k) === sel ? " cur" : ""}${k === dPlaying ? " playing" : ""}`}>
+                      <NoteGlyph n={n} x={x} y={y} sys={sys} bottom={bottom} clef={song.clef} shown={layout.accidentals[k].shown} />
+                      <rect
+                        className="hit-note"
+                        x={x - 0.5 * S}
+                        y={n.rest ? sys.y - S : y - 1.1 * S}
+                        width={HEAD_W(n.dur) + S}
+                        height={n.rest ? 6 * S : 2.2 * S}
+                        onPointerDown={(e) => onNoteDown(e, k)}
+                        onPointerMove={onNoteMove}
+                        onPointerUp={onNoteUp}
+                        onPointerEnter={() => setHover(null)}
+                      >
+                        <title>{n.rest ? "Rest" : pitchName(n.pitch, layout.accidentals[k].actual)}</title>
+                      </rect>
+                    </g>
+                  );
+                })}
+                <Lyrics
+                  sys={sys}
+                  song={dsong}
+                  noteX={layout.noteX}
+                  verses={layout.verses}
+                  editing={!expanded && lyricEdit !== null ? { i: lyricEdit, v: lyricVerse } : null}
+                  onEdit={expanded ? undefined : (i, v) => editLyric(i, v)}
+                />
+                {names && <NoteNames sys={sys} song={dsong} noteX={layout.noteX} accidentals={layout.accidentals} style={names} />}
+                {caret?.sys === sys && (
+                  <g className="caret edit-only">
+                    <rect x={caret.x - 0.12 * S} y={sys.y - 1.5 * S} width={0.24 * S} height={7 * S} rx={0.12 * S} />
+                    <title>New notes go here</title>
                   </g>
-                );
-              })}
-              <Lyrics sys={sys} song={song} noteX={layout.noteX} editing={lyricEdit} />
-              {names && <NoteNames sys={sys} song={song} noteX={layout.noteX} accidentals={layout.accidentals} style={names} />}
-              {caret?.sys === sys && (
-                <g className="caret edit-only">
-                  <rect x={caret.x - 0.12 * S} y={sys.y - 1.5 * S} width={0.24 * S} height={7 * S} rx={0.12 * S} />
-                  <title>New notes go here</title>
-                </g>
-              )}
-              {hover?.sys === sys && (
-                <g className="ghost edit-only">
-                  <NoteGlyph
-                    n={{ id: "", dur: input.dur, dots: input.dots, rest: input.rest, pitch: hover.pitch }}
-                    x={hover.x - HEAD_W(input.dur) / 2}
-                    y={input.rest ? sys.y + 2 * S : pitchY(sys, hover.pitch, bottom)}
-                    sys={sys}
-                    bottom={bottom}
-                    clef={song.clef}
-                    shown={null}
-                  />
-                </g>
-              )}
-            </g>
-          ))}
+                )}
+                {hover?.sys === sys && (
+                  <g className="ghost edit-only">
+                    <NoteGlyph
+                      n={{ id: "", dur: input.dur, dots: input.dots, rest: input.rest, pitch: hover.pitch }}
+                      x={hover.x - HEAD_W(input.dur) / 2}
+                      y={input.rest ? sys.y + 2 * S : pitchY(sys, hover.pitch, bottom)}
+                      sys={sys}
+                      bottom={bottom}
+                      clef={song.clef}
+                      shown={null}
+                    />
+                  </g>
+                )}
+              </g>
+            );
+          })}
           {pi === 0 && !song.notes.length && (
             <text className="hint edit-only" x={PAGE_W / 2} y={systems[0].y + 9 * S} textAnchor="middle">
               Click on the staff or type the letters A–G to enter notes
+            </text>
+          )}
+          {pi === 0 && expanded && !dsong.notes.length && song.notes.length > 0 && (
+            <text className="hint edit-only" x={PAGE_W / 2} y={systems[0].y + 9 * S} textAnchor="middle">
+              The form is empty – add sections to it in the bar above
             </text>
           )}
           <text className="page-number" x={PAGE_W / 2} y={PAGE_H - 40} textAnchor="middle">
@@ -192,6 +236,14 @@ export function Score() {
       ))}
     </div>
   );
+}
+
+/** "Verse – Chorus – Verse – Chorus" for the heading of the compact view. */
+export function formText(song: Song) {
+  const names = new Map(sectionsOf(song).map((s, i) => [s.id, s.name || `Section ${i + 1}`]));
+  return formOf(song)
+    .map((id) => names.get(id))
+    .join(" – ");
 }
 
 /**
@@ -209,7 +261,7 @@ function caretAt(song: Song, systems: SystemLayout[], noteX: number[], sel: numb
   return { sys, x: next !== null && next > right ? (right + next) / 2 + 0.2 * S : right + 1.2 * S };
 }
 
-export function Heading({ song }: { song: Song }) {
+export function Heading({ song, form }: { song: Song; form?: string }) {
   return (
     <g className="heading">
       <text className="song-title" x={PAGE_W / 2} y={100} textAnchor="middle">
@@ -221,8 +273,13 @@ export function Heading({ song }: { song: Song }) {
         </text>
       )}
       <text className="tempo" x={64} y={128}>
-        <tspan className="mus-small">{""}</tspan> = {song.tempo}
+        <tspan className="mus-small">{"\uECA5"}</tspan> = {song.tempo}
       </text>
+      {form && (
+        <text className="form-line" x={PAGE_W / 2} y={158} textAnchor="middle">
+          Form: {form}
+        </text>
+      )}
     </g>
   );
 }
@@ -264,10 +321,20 @@ export function Staff({ sys, song, final }: { sys: SystemLayout; song: Song; fin
           </text>
         </g>
       )}
-      {!sys.first && sys.measures[0] && (
-        <text className="measure-number" x={sys.x0} y={sys.y - 1.6 * S}>
-          {sys.measures[0].number}
-        </text>
+      {sys.label ? (
+        <g className="section-label">
+          <rect x={sys.x0} y={sys.y - 4.4 * S} width={sys.label.length * 7.6 + 1.4 * S} height={2.2 * S} rx={0.3 * S} />
+          <text x={sys.x0 + 0.7 * S} y={sys.y - 2.75 * S}>
+            {sys.label}
+          </text>
+        </g>
+      ) : (
+        !sys.first &&
+        sys.measures[0] && (
+          <text className="measure-number" x={sys.x0} y={sys.y - 1.6 * S}>
+            {sys.measures[0].number}
+          </text>
+        )
       )}
       {sys.measures.map((m) => {
         const end = m.x + m.width;
@@ -277,6 +344,14 @@ export function Staff({ sys, song, final }: { sys: SystemLayout; song: Song; fin
             <g key={m.number}>
               <rect className="bar-fill" x={end - 0.9 * S} y={sys.y} width={0.16 * S} height={4 * S} />
               <rect className="bar-fill" x={end - 0.5 * S} y={sys.y} width={0.5 * S} height={4 * S} />
+            </g>
+          );
+        // A section ends with a double bar line.
+        if (sys.sectionEnd && m === real[real.length - 1])
+          return (
+            <g key={m.number}>
+              <line className="bar" x1={end - 0.5 * S} x2={end - 0.5 * S} y1={sys.y} y2={sys.y + 4 * S} strokeWidth={0.16 * S} />
+              <line className="bar" x1={end} x2={end} y1={sys.y} y2={sys.y + 4 * S} strokeWidth={0.16 * S} />
             </g>
           );
         return <line key={m.number} className="bar" x1={end} x2={end} y1={sys.y} y2={sys.y + 4 * S} strokeWidth={0.16 * S} />;
@@ -380,31 +455,61 @@ function nextSung(notes: NoteEvent[], i: number, dir: 1 | -1) {
   return null;
 }
 
-export function Lyrics({ sys, song, noteX, editing }: { sys: SystemLayout; song: Song; noteX: number[]; editing: number | null }) {
-  const y = sys.y + LYRIC_DY;
+export function Lyrics({
+  sys,
+  song,
+  noteX,
+  verses = 1,
+  editing = null,
+  onEdit,
+}: {
+  sys: SystemLayout;
+  song: Song;
+  noteX: number[];
+  verses?: number;
+  editing?: { i: number; v: number } | null;
+  onEdit?: (i: number, v: number) => void;
+}) {
   const out = [];
-  for (let i = sys.start; i < sys.end; i++) {
-    const n = song.notes[i];
-    const cx = centerX(n, noteX[i]);
-    if (i === editing) {
-      out.push(<LyricInput key={`edit-${n.id}`} i={i} x={cx} y={y} />);
-      continue;
-    }
-    if (!n.lyric) continue;
-    const text = n.lyric.replace(/-$/, "");
-    out.push(
-      <text key={n.id} className="lyric" x={cx} y={y} textAnchor="middle" onPointerDown={() => editLyric(i)}>
-        {text}
-      </text>,
-    );
-    // A hyphen centered between this syllable and the next one in the same system.
-    const next = nextSung(song.notes, i, 1);
-    if (n.lyric.endsWith("-") && next !== null && next < sys.end) {
+  const lines = Math.max(verses, editing ? editing.v + 1 : 1);
+  // Verse numbers only where this system has more than one line of text.
+  let used = 0;
+  for (let v = 0; v < lines; v++) if (song.notes.slice(sys.start, sys.end).some((n) => verseOf(n, v))) used++;
+  for (let v = 0; v < lines; v++) {
+    const y = sys.y + LYRIC_DY + v * VERSE_DY;
+    let numbered = used < 2;
+    for (let i = sys.start; i < sys.end; i++) {
+      const n = song.notes[i];
+      const cx = centerX(n, noteX[i]);
+      if (editing && i === editing.i && v === editing.v) {
+        out.push(<LyricInput key={`edit-${n.id}-${v}`} i={i} v={v} x={cx} y={y} />);
+        continue;
+      }
+      const lyric = verseOf(n, v);
+      if (!lyric) continue;
+      // With several verses, each line starts with its number.
+      if (!numbered) {
+        numbered = true;
+        out.push(
+          <text key={`no-${v}`} className="lyric verse-no" x={sys.x0 + 0.8 * S} y={y}>
+            {v + 1}.
+          </text>,
+        );
+      }
       out.push(
-        <text key={`${n.id}-h`} className="lyric" x={(cx + centerX(song.notes[next], noteX[next])) / 2} y={y} textAnchor="middle">
-          -
+        <text key={`${n.id}-${v}`} className="lyric" x={cx} y={y} textAnchor="middle" onPointerDown={onEdit && (() => onEdit(i, v))}>
+          {lyric.replace(/-$/, "")}
         </text>,
       );
+      // A hyphen centered between this syllable and the next one in the same system.
+      const next = nextSung(song.notes, i, 1);
+      if (lyric.endsWith("-") && next !== null && next < sys.end) {
+        out.push(
+          <text key={`${n.id}-${v}-h`} className="lyric" x={(cx + centerX(song.notes[next], noteX[next])) / 2} y={y} textAnchor="middle">
+            -
+          </text>,
+        );
+      }
     }
   }
   return <g className="lyrics">{out}</g>;
@@ -412,20 +517,21 @@ export function Lyrics({ sys, song, noteX, editing }: { sys: SystemLayout; song:
 
 /**
  * Inline editor for one syllable: Space or Tab goes to the next note, "-" ends the syllable with a
- * hyphen, Shift+Tab or Backspace in an empty field goes back, Enter or Esc stops.
+ * hyphen, Shift+Tab or Backspace in an empty field goes back, ↓ / ↑ switch to the next or previous
+ * verse, Enter or Esc stops.
  */
-function LyricInput({ i, x, y }: { i: number; x: number; y: number }) {
+function LyricInput({ i, v, x, y }: { i: number; v: number; x: number; y: number }) {
   const n = useStore((s) => s.song.notes[i]);
-  const [value, setValue] = useState(() => (n?.lyric ?? "").replace(/-$/, ""));
-  const hyphen = useRef(!!n?.lyric?.endsWith("-"));
+  const initial = (n && verseOf(n, v)) ?? "";
+  const [value, setValue] = useState(() => initial.replace(/-$/, ""));
+  const hyphen = useRef(initial.endsWith("-"));
   const commit = (h = hyphen.current) => {
     hyphen.current = h;
-    setLyric(i, value.trim() ? value.trim() + (h ? "-" : "") : "");
+    setLyric(i, value.trim() ? value.trim() + (h ? "-" : "") : "", v);
   };
   const go = (dir: 1 | -1 | 0) => {
     const notes = useStore.getState().song.notes;
-    const to = dir ? nextSung(notes, i, dir) : null;
-    editLyric(to);
+    editLyric(dir ? nextSung(notes, i, dir) : null, v);
   };
   const onKey = (e: RKeyboardEvent<HTMLInputElement>) => {
     const key = e.key;
@@ -441,6 +547,10 @@ function LyricInput({ i, x, y }: { i: number; x: number; y: number }) {
       e.preventDefault();
       commit();
       go(-1);
+    } else if (key === "ArrowDown" || (key === "ArrowUp" && v > 0)) {
+      e.preventDefault();
+      commit();
+      editLyric(i, v + (key === "ArrowDown" ? 1 : -1));
     } else if (key === "Enter" || key === "Escape") {
       e.preventDefault();
       commit();
@@ -459,9 +569,10 @@ function LyricInput({ i, x, y }: { i: number; x: number; y: number }) {
         onPointerDown={(e) => e.stopPropagation()}
         onBlur={() => {
           commit();
-          if (useStore.getState().lyricEdit === i) editLyric(null);
+          const st = useStore.getState();
+          if (st.lyricEdit === i && st.lyricVerse === v) editLyric(null);
         }}
-        aria-label="Lyric syllable"
+        aria-label={`Lyric syllable, verse ${v + 1}`}
       />
     </foreignObject>
   );

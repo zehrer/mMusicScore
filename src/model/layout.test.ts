@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { insertIndex, layoutScore, MARGIN_X, PAGE_W } from "./layout";
 import { emptySong, parseMelody } from "./music";
+import { addSection, splitSection } from "./sections";
 import { sampleSongs } from "./samples";
 
 describe("layout", () => {
@@ -27,5 +28,18 @@ describe("layout", () => {
     const sys = l.pages[0][0];
     expect(insertIndex(sys, l.noteX, l.noteX[2] - 10)).toBe(2);
     expect(insertIndex(sys, l.noteX, PAGE_W)).toBe(sys.end);
+  });
+
+  it("starts every section on a new system with its label, empty ones too", () => {
+    const split = splitSection({ ...emptySong(), notes: parseMelody("C4 D4 E4 F4 G4 A4 B4 C5") }, 4, "Chorus");
+    const { song, id } = addSection(split, "Bridge");
+    const systems = layoutScore(song).pages.flat();
+    expect(systems.map((s) => [s.start, s.end, s.label])).toEqual([
+      [0, 4, null],
+      [4, 8, "Chorus"],
+      [8, 8, "Bridge"],
+    ]);
+    expect(systems[2].section).toBe(id);
+    expect(systems[2].measures[0].extra).toBe(true);
   });
 });

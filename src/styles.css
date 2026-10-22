@@ -112,6 +112,23 @@ main { flex: 1; min-height: 0; display: flex; }
 .library-foot button { flex: 1; border: 1px solid var(--line); background: var(--surface); border-radius: 14px; padding: 4px 8px; }
 .library-foot button:hover:not(:disabled) { background: var(--hover); }
 
+/* --- Sections and form --- */
+.form-bar { flex: none; display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-bottom: 1px solid var(--line); background: var(--surface); overflow-x: auto; }
+.form-bar > * { flex: none; }
+.form-bar .segmented { background: var(--hover); }
+.form-bar .segmented button { width: auto; height: auto; padding: 3px 12px; }
+.form-bar .segmented button:disabled { opacity: 0.4; }
+.form-label { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.form-chips { display: flex; align-items: center; gap: 4px; flex: 0 1 auto; min-width: 0; overflow-x: auto; }
+.form-chips .chip { flex: none; border: 1px solid #c4c7c5; background: var(--surface); border-radius: 14px; padding: 3px 12px; cursor: grab; }
+.form-chips .chip:hover { background: var(--hover); }
+.form-chips .chip.dragging { opacity: 0.4; }
+.form-chips .chip.add { cursor: pointer; padding: 3px 10px; color: var(--accent); }
+.form-hint { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.form-bar .spacer { flex: 1; }
+.form-action { border: 0; background: none; border-radius: 14px; padding: 4px 10px; color: var(--accent); white-space: nowrap; }
+.form-action:hover:not(:disabled) { background: var(--accent-soft); }
+
 /* --- Piano --- */
 .editor { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .piano { flex: none; display: flex; justify-content: safe center; overflow-x: auto; padding: 8px 16px 10px; background: #f1f3f4; border-top: 1px solid var(--line); }
@@ -173,6 +190,10 @@ main { flex: 1; min-height: 0; display: flex; }
 .page-number { font: 12px Georgia, serif; fill: var(--muted); }
 .hint { font-size: 14px; fill: var(--muted); }
 .note-names text { font: 600 11px Roboto, -apple-system, "Segoe UI", Arial, sans-serif; fill: #444746; pointer-events: none; }
+.section-label rect { fill: #fff; stroke: currentColor; stroke-width: 1.2; }
+.section-label text { font: bold 13px Georgia, "Times New Roman", serif; fill: currentColor; }
+.form-line { font: italic 13px Georgia, "Times New Roman", serif; fill: var(--muted); }
+.verse-no { cursor: default; }
 .lyric { font: 14px Georgia, "Times New Roman", serif; fill: var(--ink); cursor: text; }
 .lyric-input {
   display: block; width: 100%; height: 100%; border: 1px solid var(--accent); border-radius: 4px; padding: 0 4px;
@@ -210,7 +231,7 @@ main { flex: 1; min-height: 0; display: flex; }
 /* --- Print: only the sheets --- */
 @page { size: A4; margin: 0; }
 @media print {
-  .header, .toolbar, .library, .piano, .mini-player, .edit-only { display: none !important; }
+  .header, .toolbar, .library, .form-bar, .piano, .mini-player, .edit-only { display: none !important; }
   .app, main, .editor, .score-wrap, .score { display: block; height: auto; overflow: visible; padding: 0; background: none; }
   .page { display: block; width: 210mm; height: 297mm; box-shadow: none; break-after: page; }
   .page:last-child { break-after: auto; }

@@ -67,11 +67,17 @@ export interface Measure {
 }
 
 /** Groups the notes into measures; a note that crosses a bar line stays in the measure it starts in. */
-export function splitMeasures(song: Pick<Song, "notes" | "beats" | "beatType">): Measure[] {
+export function splitMeasures(song: Pick<Song, "notes" | "beats" | "beatType" | "sections">): Measure[] {
   const len = measureTicks(song);
   const measures: Measure[] = [];
   let cur: Measure = { start: 0, end: 0, ticks: 0 };
+  // Every section starts with a new measure.
+  const first = song.sections?.[0]?.id;
   song.notes.forEach((n, i) => {
+    if (i > 0 && cur.end > cur.start && (n.sec ?? first) !== (song.notes[i - 1].sec ?? first)) {
+      measures.push(cur);
+      cur = { start: i, end: i, ticks: 0 };
+    }
     cur.end = i + 1;
     cur.ticks += ticks(n);
     if (cur.ticks >= len) {
@@ -91,7 +97,7 @@ export interface Resolved {
 }
 
 /** Applies key signature and accidentals that carry through the rest of their measure. */
-export function resolveAccidentals(song: Pick<Song, "notes" | "beats" | "beatType" | "fifths">): Resolved[] {
+export function resolveAccidentals(song: Pick<Song, "notes" | "beats" | "beatType" | "fifths" | "sections">): Resolved[] {
   const out: Resolved[] = new Array(song.notes.length);
   for (const m of splitMeasures(song)) {
     const state = new Map<number, Alter>();

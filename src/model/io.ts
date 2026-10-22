@@ -41,10 +41,26 @@ export function normalizeSong(raw: unknown): Song {
     beatType: [1, 2, 4, 8, 16].includes(r.beatType as number) ? (r.beatType as number) : 4,
     fifths: num(r.fifths, 0, -7, 7),
     clef: r.clef === "bass" ? "bass" : "treble",
-    notes: (r.notes as unknown[]).map(normalizeNote),
+    ...normalizeSections(r, (r.notes as unknown[]).map(normalizeNote)),
     createdAt: num(r.createdAt, base.createdAt, 0, Number.MAX_SAFE_INTEGER),
     updatedAt: num(r.updatedAt, base.updatedAt, 0, Number.MAX_SAFE_INTEGER),
   };
+}
+
+/**
+ * Keeps valid sections and form, and sorts notes section by section (stable), so each section's
+ * notes stay together. Notes of unknown sections go to the first.
+ */
+function normalizeSections(r: Partial<Song>, notes: NoteEvent[]): Pick<Song, "notes" | "sections" | "form"> {
+  const sections = Array.isArray(r.sections)
+    ? r.sections.filter((x) => x && typeof x.id === "string" && x.id).map((x) => ({ id: x.id, name: str(x.name) }))
+    : [];
+  if (!sections.length) return { notes: notes.map(({ sec: _, ...n }) => n) };
+  const order = new Map(sections.map((x, i) => [x.id, i]));
+  const placed = notes.map((n) => (n.sec && order.has(n.sec) ? n : { ...n, sec: sections[0].id }));
+  const sorted = placed.map((n, i) => [order.get(n.sec!)!, i, n] as const).sort((a, b) => a[0] - b[0] || a[1] - b[1]).map((x) => x[2]);
+  const form = Array.isArray(r.form) ? r.form.filter((id): id is string => typeof id === "string" && order.has(id)) : sections.map((x) => x.id);
+  return { notes: sorted, sections, form };
 }
 
 function normalizeNote(raw: unknown): NoteEvent {
@@ -58,6 +74,8 @@ function normalizeNote(raw: unknown): NoteEvent {
   if (r.rest) n.rest = true;
   if (r.alter === -1 || r.alter === 0 || r.alter === 1) n.alter = r.alter as Alter;
   if (typeof r.lyric === "string" && r.lyric) n.lyric = r.lyric;
+  if (Array.isArray(r.verses) && r.verses.length) n.verses = r.verses.map((v) => (typeof v === "string" ? v : ""));
+  if (typeof r.sec === "string" && r.sec) n.sec = r.sec;
   return n;
 }
 

@@ -32,11 +32,14 @@ export function Piano() {
   const song = useStore((s) => s.song);
   const sel = useStore((s) => s.sel);
   const playing = useStore(playingHere);
+  const playingSong = useStore((s) => s.playingSong);
   const lowest = song.clef === "bass" ? 14 : 21; // C2 or C3
   const resolved = resolveAccidentals(song);
-  const lit = new Set(
-    [playing ?? sel].filter((i): i is number => i !== null && !!song.notes[i] && !song.notes[i].rest).map((i) => midi(song.notes[i].pitch, resolved[i].actual)),
-  );
+  // The sounding note comes from the played form; otherwise the selected note lights up.
+  const lit = new Set<number>();
+  const pn = playing !== null ? playingSong?.notes[playing] : undefined;
+  if (pn && playingSong && !pn.rest) lit.add(midi(pn.pitch, resolveAccidentals(playingSong)[playing!].actual));
+  else if (playing === null && sel !== null && song.notes[sel] && !song.notes[sel].rest) lit.add(midi(song.notes[sel].pitch, resolved[sel].actual));
   const all = keys(lowest, song.fifths);
   const width = 22 * WHITE_W;
 

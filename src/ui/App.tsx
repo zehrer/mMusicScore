@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { DURATIONS } from "../model/music";
 import { deleteSelection, editLyric, insertRest, selectAll, insertStep, moveSelected, redo, select, setDuration, toggleAlter, toggleDot, undo, useStore } from "../model/store";
 import * as A from "./actions";
+import { FormBar } from "./FormBar";
 import { Header } from "./Header";
 import { Library } from "./Library";
 import { MiniPlayer } from "./MiniPlayer";
@@ -101,6 +102,7 @@ export function App() {
       <main>
         <Library />
         <div className="editor">
+          <FormBar />
           <div className="score-wrap">
             <Score />
             <MiniPlayer />
