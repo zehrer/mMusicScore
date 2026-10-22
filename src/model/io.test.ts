@@ -46,3 +46,9 @@ describe("import / export", () => {
     ]);
   });
 });
+
+describe("samples", () => {
+  it("has a syllable on every note of the songs with lyrics", () => {
+    for (const s of sampleSongs().filter((s) => s.notes.some((n) => n.lyric))) expect(s.notes.every((n) => n.lyric)).toBe(true);
+  });
+});
