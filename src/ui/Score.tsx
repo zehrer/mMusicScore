@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { insertIndex, keyWidth, layoutScore, PAGE_H, PAGE_W, pitchY, S, yPitch, type SystemLayout } from "../model/layout";
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, pitchName } from "../model/music";
 import { auditionAt, editLyric, insertNote, recordUndo, select, setLyric, updateNote, useStore } from "../model/store";
@@ -28,7 +28,16 @@ export function Score() {
   const layout = useMemo(() => layoutScore(song), [song]);
   const [hover, setHover] = useState<Hover>(null);
   const drag = useRef<Drag>(null);
+  const root = useRef<HTMLDivElement>(null);
   const bottom = BOTTOM_LINE[song.clef];
+  const systems = layout.pages.flat();
+  const caret = playing === null && lyricEdit === null ? caretAt(song, systems, layout.noteX, sel) : null;
+  const current = playing ?? sel;
+
+  // Keep the selected or sounding note in view.
+  useEffect(() => {
+    root.current?.querySelector(".note.playing, .note.sel")?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: playing === null ? "auto" : "smooth" });
+  }, [sel, playing, layout]);
 
   const onMove = (e: RPointerEvent, sys: SystemLayout) => {
     if (drag.current) return;
@@ -63,7 +72,7 @@ export function Score() {
   const onNoteUp = () => (drag.current = null);
 
   return (
-    <div className="score" onPointerLeave={() => setHover(null)}>
+    <div className="score" ref={root} onPointerLeave={() => setHover(null)}>
       {layout.pages.map((systems, pi) => (
         <svg
           key={pi}
@@ -77,6 +86,16 @@ export function Score() {
           {pi === 0 && <Heading song={song} />}
           {systems.map((sys, si) => (
             <g key={si} className={sys.measures.every((m) => m.extra) ? "edit-only" : undefined}>
+              {current !== null && current >= sys.start && current < sys.end && song.notes[current] && (
+                <rect
+                  className={`highlight edit-only${playing !== null ? " playing" : ""}`}
+                  x={layout.noteX[current] - 0.7 * S}
+                  y={sys.y - 2 * S}
+                  width={HEAD_W(song.notes[current].dur) + 1.4 * S}
+                  height={8 * S}
+                  rx={0.5 * S}
+                />
+              )}
               <Staff sys={sys} song={song} final={sys.measures.some((m) => m.end === song.notes.length && !m.extra) && song.notes.length > 0} />
               <rect
                 className="hit-staff"
@@ -112,6 +131,12 @@ export function Score() {
                 );
               })}
               <Lyrics sys={sys} song={song} noteX={layout.noteX} editing={lyricEdit} />
+              {caret?.sys === sys && (
+                <g className="caret edit-only">
+                  <rect x={caret.x - 0.12 * S} y={sys.y - 1.5 * S} width={0.24 * S} height={7 * S} rx={0.12 * S} />
+                  <title>New notes go here</title>
+                </g>
+              )}
               {hover?.sys === sys && (
                 <g className="ghost edit-only">
                   <NoteGlyph
@@ -139,6 +164,21 @@ export function Score() {
       ))}
     </div>
   );
+}
+
+/**
+ * Where the next note from the keyboard or the piano goes: right after the selected note, or after
+ * the last note when nothing is selected.
+ */
+function caretAt(song: Song, systems: SystemLayout[], noteX: number[], sel: number | null) {
+  const len = song.notes.length;
+  if (!len) return systems[0] ? { sys: systems[0], x: systems[0].contentX + 1.5 * S } : null;
+  const at = sel ?? len - 1;
+  const sys = systems.find((s) => at >= s.start && at < s.end);
+  if (!sys) return null;
+  const right = noteX[at] + HEAD_W(song.notes[at].dur);
+  const next = at + 1 < sys.end ? noteX[at + 1] - S : null;
+  return { sys, x: next !== null && next > right ? (right + next) / 2 + 0.2 * S : right + 1.2 * S };
 }
 
 function Heading({ song }: { song: Song }) {
@@ -207,8 +247,8 @@ function Staff({ sys, song, final }: { sys: SystemLayout; song: Song; final: boo
         if (final && m.end === song.notes.length)
           return (
             <g key={m.number}>
-              <rect x={end - 0.9 * S} y={sys.y} width={0.16 * S} height={4 * S} />
-              <rect x={end - 0.5 * S} y={sys.y} width={0.5 * S} height={4 * S} />
+              <rect className="bar-fill" x={end - 0.9 * S} y={sys.y} width={0.16 * S} height={4 * S} />
+              <rect className="bar-fill" x={end - 0.5 * S} y={sys.y} width={0.5 * S} height={4 * S} />
             </g>
           );
         return <line key={m.number} className="bar" x1={end} x2={end} y1={sys.y} y2={sys.y + 4 * S} strokeWidth={0.16 * S} />;

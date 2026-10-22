@@ -126,9 +126,15 @@ main { flex: 1; min-height: 0; display: flex; }
 .page { flex: none; box-shadow: 0 1px 3px rgb(60 64 67 / 30%), 0 4px 12px rgb(60 64 67 / 12%); user-select: none; touch-action: none; }
 .paper { fill: #fff; }
 .mus { font-family: Bravura; font-size: 40px; fill: currentColor; }
-.page g { color: var(--ink); }
+/* Color is set once on the page so .sel and .playing can recolor a whole note. */
+.page { color: var(--ink); }
 .staff-line, .bar, .ledger, .stem { stroke: currentColor; }
-.page rect:not(.paper):not([class*="hit"]) { fill: currentColor; }
+.bar-fill { fill: currentColor; }
+.highlight { fill: var(--accent-soft); opacity: 0.8; pointer-events: none; }
+.highlight.playing { fill: #fce8e6; }
+.caret { fill: var(--accent); pointer-events: none; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0.15; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
 .song-title { font: 28px/1 Georgia, "Times New Roman", serif; fill: var(--ink); }
 .song-composer { font: italic 15px Georgia, "Times New Roman", serif; fill: var(--ink); }
 .tempo { font: bold 14px Georgia, serif; fill: var(--ink); }

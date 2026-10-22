@@ -14,7 +14,7 @@ Live: https://zehrer.github.io/mMusicScore/
 - **Piano** below the score: click a key to insert that note after the selection, in the current note value (View → Piano hides it).
 - **Lyrics**: one syllable per note under the staff (Lyrics button or **L**). Exported to and imported from MusicXML.
 - **Accidentals** carry through the rest of the measure as usual; the key signature is applied automatically.
-- **Playback** from the selection with a simple synthesizer; the sounding note turns red.
+- **Cursor**: the selected note is blue with a highlight, a blinking bar shows where the next note goes (after the selection, or at the end). During **playback** from the selection the sounding note turns red and the score scrolls along.
 - **Import / export**: the whole library or single songs as JSON, single songs as **MusicXML** (MuseScore, Finale, Sibelius, Dorico …). Imports JSON and uncompressed MusicXML (first voice of the first part).
 - **Print / PDF** via File → Print; only the score pages are printed.
 
