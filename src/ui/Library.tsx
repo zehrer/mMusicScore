@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { openSaved } from "../model/persist";
-import { useStore } from "../model/store";
+import { closeLibraryOnPhone, useStore } from "../model/store";
 import type { SongInfo } from "../model/types";
 import * as A from "./actions";
 import { MenuList } from "./Menu";
@@ -25,7 +25,14 @@ export function Library() {
     <aside className="library">
       <div className="library-head">
         <h2>Songs</h2>
-        <button className="new" onClick={A.newSong} title="New song">
+        <button
+          className="new"
+          onClick={() => {
+            void A.newSong();
+            closeLibraryOnPhone();
+          }}
+          title="New song"
+        >
           ＋ New
         </button>
       </div>
@@ -35,7 +42,10 @@ export function Library() {
           <li
             key={s.id}
             className={s.id === current.id ? "on" : ""}
-            onClick={() => openSaved(s.id)}
+            onClick={() => {
+              void openSaved(s.id);
+              closeLibraryOnPhone();
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               setMenu({ info: s, x: e.clientX, y: e.clientY });

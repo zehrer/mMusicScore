@@ -67,6 +67,8 @@ interface State {
   /** Short notice at the bottom, optionally with an Undo button. */
   toast: { text: string; undo?: boolean } | null;
   showPiano: boolean;
+  /** The song list on the left; on phones it slides in over the music. */
+  showLibrary: boolean;
   /** Note names above the staff, in English or German naming. */
   showNames: boolean;
   nameStyle: NameStyle;
@@ -99,6 +101,7 @@ export const useStore = create<State>(() => ({
   dialog: null,
   toast: null,
   showPiano: loadFlag("showPiano", true),
+  showLibrary: !isPhone() && loadFlag("showLibrary", true),
   showNames: loadFlag("showNames", false),
   nameStyle: loadNameStyle(),
   lyricEdit: null,
@@ -145,6 +148,17 @@ function loadNameStyle(): NameStyle {
   } catch {
     return "en";
   }
+}
+
+export function setShowLibrary(on: boolean) {
+  set({ showLibrary: on });
+  // Phones always start without it; only the desktop choice is remembered.
+  if (!isPhone()) remember("showLibrary", on ? "1" : "0");
+}
+
+/** After picking a song on a phone the list gets out of the way. */
+export function closeLibraryOnPhone() {
+  if (isPhone()) set({ showLibrary: false });
 }
 
 export function setShowPiano(on: boolean) {

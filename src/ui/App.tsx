@@ -92,6 +92,7 @@ export function App() {
   const showPiano = useStore((s) => s.showPiano);
   const editing = useStore((s) => s.mode === "edit");
   const toast = useStore((s) => s.toast);
+  const showLibrary = useStore((s) => s.showLibrary);
   useEffect(() => {
     addEventListener("keydown", onKey);
     const unlisten = A.listenClipboard();
@@ -105,7 +106,7 @@ export function App() {
       <Header />
       {editing ? <Toolbar /> : <ViewBar />}
       <main>
-        <Library />
+        {showLibrary && <Library />}
         <div className="editor">
           {editing && <FormBar />}
           <div className="score-wrap">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deleteSong } from "../model/persist";
-import { change, deleteSelection, redo, selectAll, setNameStyle, setShowNames, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, undo, useStore } from "../model/store";
+import { change, deleteSelection, redo, selectAll, setShowLibrary, setNameStyle, setShowNames, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, undo, useStore } from "../model/store";
 import * as A from "./actions";
 import { About, Shortcuts } from "./Dialogs";
 import { MenuList, type MenuItem } from "./Menu";
@@ -62,6 +62,7 @@ export function Header() {
     {
       label: "View",
       items: [
+        { label: `${s.showLibrary ? "✓ " : "\u2003"}Song list`, action: () => setShowLibrary(!s.showLibrary) },
         { label: `${s.showPiano ? "✓ " : "\u2003"}Piano`, action: () => setShowPiano(!s.showPiano) },
         { label: `${s.showNames ? "✓ " : "\u2003"}Note names`, action: () => setShowNames(!s.showNames) },
         { heading: "Note names" },
@@ -91,6 +92,9 @@ export function Header() {
 
   return (
     <header className="header">
+      <button className={`lib-toggle${s.showLibrary ? " on" : ""}`} title={s.showLibrary ? "Hide the song list" : "Show the song list"} aria-label="Song list" onClick={() => setShowLibrary(!s.showLibrary)}>
+        ☰
+      </button>
       <svg className="logo" viewBox="0 0 32 32" aria-hidden>
         <rect width="32" height="32" rx="7" fill="#0b57d0" />
         <path d="M13 23V8l11-3v15" stroke="white" strokeWidth="2.4" fill="none" />

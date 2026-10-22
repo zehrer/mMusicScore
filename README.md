@@ -8,7 +8,7 @@ Live: https://zehrer.github.io/mMusicScore/
 
 ## Concept
 
-- **Song library** (left): every song in this browser, with search. ⋯ on a song: duplicate, export, delete.
+- **Song library** (left): every song in this browser, with search. ⋯ on a song: duplicate, export, delete. **☰** hides or shows it (on phones it slides in over the music).
 - **Score**: A4 pages like paper, with title, composer, tempo, clef, key and time signature. Bar lines, system and page breaks are laid out automatically.
 - **Edit in place**: click on the staff to insert a note at that position (a grey preview shows pitch and value); click a note to select it, drag it up or down to change its pitch.
 - **Piano** below the score: click a key to insert that note after the selection, in the current note value (View → Piano hides it).
@@ -23,7 +23,7 @@ Live: https://zehrer.github.io/mMusicScore/
 - **HTML export** (File → Export song as HTML): a single file that shows the score in any browser and plays it (▶ Play, or click a note to start there). Its **Open in mMusicScore** button adds the song to the app again; File → Import also reads the file.
 - **Print / PDF** via File → Print; only the score pages are printed.
 
-- **View mode**: a slim bar with song choice and a big **▶ Play**; tap a note to play from there. Phones start in it, ✎ Edit switches to all tools (and View back). On iPhone, playback also works with the ring/silent switch on (iOS 17 and later; older versions use a silent audio element for the same effect).
+- **View mode**: a slim bar with a big **▶ Play** (plus song choice and ＋ New while the song list is hidden, and ⛶ full screen where the browser allows it); tap a note to play from there. Phones start in it, ✎ Edit switches to all tools (and View back). On iPhone, playback also works with the ring/silent switch on (iOS 17 and later; older versions use a silent audio element for the same effect).
 
 ## Usage
 
