@@ -93,7 +93,7 @@ export function printScore() {
 export function playFrom(i: number) {
   if (state().isPlaying) stop();
   useStore.setState({ sel: i, anchor: null });
-  togglePlay();
+  startPlayback(true);
 }
 
 /**
@@ -101,12 +101,19 @@ export function playFrom(i: number) {
  * or stops playback.
  */
 export function togglePlay() {
-  const { isPlaying, song, sel, voice } = state();
-  if (isPlaying) return stop();
+  if (state().isPlaying) return stop();
+  startPlayback(false);
+}
+
+/** `exact`: start at the selected note even if it is the last one (a tapped note). */
+function startPlayback(exact: boolean) {
+  const { song, sel, voice } = state();
   const { song: played, src, src2 } = expand(song);
   if (!played.notes.length && !played.second?.notes.length) return;
-  // Start where the selected note (of the voice being edited) first comes up in the form.
-  const k = sel === null ? -1 : (voice === 0 ? src : src2).indexOf(sel);
+  // Start where the selected note (of the voice being edited) first comes up in the form; from
+  // the beginning when nothing is selected or the selection is the last note (at the end).
+  const atEnd = !exact && sel !== null && sel === voiceSong(song, voice).notes.length - 1;
+  const k = sel === null || atEnd ? -1 : (voice === 0 ? src : src2).indexOf(sel);
   const from = k < 0 ? 0 : onsets(voiceSong(played, voice).notes)[k];
   useStore.setState({ isPlaying: true, playingSong: played, playingSrc: src, playingSrc2: src2, playing: null, playing2: null });
   play(
