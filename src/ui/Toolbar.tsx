@@ -98,7 +98,7 @@ export function Toolbar() {
       <label title={s.song.second ? `Sound of voice ${s.voice + 1}` : "Sound"}>
         <select value={instrumentOf(s.song, s.voice)} onChange={(e) => setVoiceMeta({ instrument: e.target.value as Instrument })}>
           <option value="piano">Piano</option>
-          <option value="flute">Flute</option>
+          <option value="flute">Recorder</option>
         </select>
       </label>
       <label title="Key signature">

@@ -148,79 +148,43 @@ export function pianoTone(ac: AudioContext, out: AudioNode, m: number, at: numbe
 }
 
 /**
- * A flute-like note: a nearly pure tone with a little second and third harmonic, breath noise
- * that puffs at the start and then stays faint, a soft attack, and a vibrato that sets in after
- * a moment. Unlike the piano it holds its volume until released.
+ * A recorder-like note (the "flute" sound), at the pitch of a soprano recorder: it sounds an
+ * octave above the written note. A clear, round tone (the odd harmonics a little stronger, as in
+ * a recorder), a soft but quick attack, no vibrato and no breath noise; it holds its volume until
+ * released.
  *
  * Self-contained on purpose: the HTML export embeds this function's source to sound the same.
  */
 export function fluteTone(ac: AudioContext, out: AudioNode, m: number, at: number, len: number): () => void {
-  const f = 440 * Math.pow(2, (m - 69) / 12);
+  const f = 440 * Math.pow(2, (m + 12 - 69) / 12);
   const end = at + Math.max(len, 0.08);
   const nodes: AudioScheduledSourceNode[] = [];
 
   const body = ac.createGain();
   body.gain.setValueAtTime(0.0001, at);
-  body.gain.linearRampToValueAtTime(0.2, at + 0.06);
-  body.gain.setTargetAtTime(0.16, at + 0.06, 0.15);
-  body.gain.setTargetAtTime(0.0001, end, 0.05);
+  body.gain.linearRampToValueAtTime(0.2, at + 0.025);
+  body.gain.setTargetAtTime(0.15, at + 0.025, 0.08);
+  body.gain.setTargetAtTime(0.0001, end, 0.04);
   const soft = ac.createBiquadFilter();
   soft.type = "lowpass";
-  soft.frequency.value = Math.min(12000, f * 5);
+  soft.frequency.value = Math.min(14000, f * 6);
   soft.connect(body).connect(out);
-
-  // Vibrato: about 5 Hz, fading in after the attack.
-  const lfo = ac.createOscillator();
-  lfo.frequency.value = 5.2;
-  const depth = ac.createGain();
-  depth.gain.setValueAtTime(0, at);
-  depth.gain.setValueAtTime(0, at + 0.18);
-  depth.gain.linearRampToValueAtTime(f * 0.005, at + 0.55);
-  lfo.connect(depth);
-  lfo.start(at);
-  lfo.stop(end + 0.4);
-  nodes.push(lfo);
 
   [
     [1, 1],
-    [2, 0.22],
-    [3, 0.08],
+    [2, 0.06],
+    [3, 0.1],
+    [4, 0.02],
   ].forEach(([h, amp]) => {
     const o = ac.createOscillator();
     o.frequency.value = f * h;
     const g = ac.createGain();
     g.gain.value = amp;
-    // The vibrato bends every harmonic by the same share of its pitch.
-    const d = ac.createGain();
-    d.gain.value = h;
-    depth.connect(d).connect(o.frequency);
     o.connect(g).connect(soft);
     o.start(at);
-    o.stop(end + 0.4);
+    o.stop(end + 0.3);
     nodes.push(o);
   });
-
-  // Breath: band-passed noise, a puff at the start, then a faint hiss.
-  const n = Math.ceil(ac.sampleRate * 0.5);
-  const buf = ac.createBuffer(1, n, ac.sampleRate);
-  const data = buf.getChannelData(0);
-  for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
-  const noise = ac.createBufferSource();
-  noise.buffer = buf;
-  noise.loop = true;
-  const band = ac.createBiquadFilter();
-  band.type = "bandpass";
-  band.frequency.value = Math.min(9000, f * 2);
-  band.Q.value = 0.8;
-  const breath = ac.createGain();
-  breath.gain.setValueAtTime(0.0001, at);
-  breath.gain.linearRampToValueAtTime(0.12, at + 0.03);
-  breath.gain.setTargetAtTime(0.025, at + 0.03, 0.08);
-  breath.gain.setTargetAtTime(0.0001, end, 0.04);
-  noise.connect(band).connect(breath).connect(out);
-  noise.start(at);
-  noise.stop(end + 0.4);
-  nodes.push(noise);
 
   return () =>
     nodes.forEach((x) => {

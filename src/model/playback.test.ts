@@ -65,15 +65,15 @@ describe("piano sound", () => {
     expect(new Function(`return ${holdTime.toString()}`)()(0.5, 0.5)).toBeCloseTo(0.8);
   });
 
-  it("plays a flute: three harmonics, vibrato and breath, also as embedded source", () => {
+  it("plays a recorder an octave above the written note, without breath noise", () => {
     for (const fn of [fluteTone, new Function(`return ${fluteTone.toString()}`)() as typeof fluteTone]) {
       const { ac, log } = fakeAudio();
       const stop = fn(ac, {} as AudioNode, 72, 0, 0.5);
-      expect(log.filter((l) => l === "osc start 0")).toHaveLength(4); // 3 harmonics + vibrato
-      expect(log).toContain("noise start 0");
+      expect(log.filter((l) => l === "osc start 0")).toHaveLength(4);
+      expect(log.some((l) => l.startsWith("noise"))).toBe(false);
       log.length = 0;
       stop();
-      expect(log.filter((l) => l.endsWith("stop"))).toHaveLength(5);
+      expect(log.filter((l) => l.endsWith("stop"))).toHaveLength(4);
     }
   });
 });
