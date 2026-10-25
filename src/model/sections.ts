@@ -1,4 +1,4 @@
-import { newId } from "./music";
+import { newId, ticks } from "./music";
 import type { NoteEvent, Section, Song } from "./types";
 
 /** The section a song without sections consists of. */
@@ -57,23 +57,19 @@ export interface Expanded {
   song: Song;
   /** Index of each note of `song` in the original song. */
   src: number[];
+  /** The same for the second voice. */
+  src2: number[];
 }
 
-/**
- * Writes the form out. The n-th time a section comes up it is sung with verse n; a section that
- * has fewer verses (a chorus with one text) repeats its first.
- */
-export function expand(song: Song): Expanded {
-  const secs = sectionsOf(song);
+/** One voice's notes written out along the form. */
+function expandNotes(song: Song, form: string[]): { notes: NoteEvent[]; src: number[] } {
   const seen = new Map<string, number>();
   const notes: NoteEvent[] = [];
   const src: number[] = [];
-  const sections: Section[] = [];
-  for (const id of formOf(song)) {
+  for (const id of form) {
     const k = seen.get(id) ?? 0;
     seen.set(id, k + 1);
     const occ = `${id}~${k}`;
-    sections.push({ id: occ, name: secs.find((s) => s.id === id)!.name });
     const [start, end] = sectionRange(song, id);
     const part = song.notes.slice(start, end);
     const v = k > 0 && part.some((n) => verseOf(n, k)) ? k : 0;
@@ -87,35 +83,81 @@ export function expand(song: Song): Expanded {
       src.push(start + j);
     });
   }
-  const { form: _, ...rest } = song;
-  return { song: { ...rest, notes, sections }, src };
-}
-
-/** Gives every note an explicit section, so sections can be renamed, reordered or deleted. */
-export function materialize(song: Song): Song {
-  const sections = sectionsOf(song);
-  const ids = sectionIds(song);
-  return { ...song, sections, form: formOf(song), notes: song.notes.map((n, i) => (n.sec === ids[i] ? n : { ...n, sec: ids[i] })) };
+  return { notes, src };
 }
 
 /**
- * Starts a new section at note `index`: it and the rest of its section move into it. Wherever the
- * old section is in the form, the new one follows, so the song sounds the same.
+ * Writes the form out, for both voices. The n-th time a section comes up it is sung with verse n;
+ * a section that has fewer verses (a chorus with one text) repeats its first.
  */
-export function splitSection(song: Song, index: number, name: string): Song {
+export function expand(song: Song): Expanded {
+  const secs = sectionsOf(song);
+  const form = formOf(song);
+  const seen = new Map<string, number>();
+  const sections: Section[] = form.map((id) => {
+    const k = seen.get(id) ?? 0;
+    seen.set(id, k + 1);
+    return { id: `${id}~${k}`, name: secs.find((s) => s.id === id)!.name };
+  });
+  const one = expandNotes(song, form);
+  const two = song.second ? expandNotes({ ...song, notes: song.second.notes }, form) : { notes: [], src: [] };
+  const { form: _, ...rest } = song;
+  const out: Song = { ...rest, notes: one.notes, sections };
+  if (song.second) out.second = { ...song.second, notes: two.notes };
+  return { song: out, src: one.src, src2: two.src };
+}
+
+const withSec = (notes: NoteEvent[], ids: string[]) => notes.map((n, i) => (n.sec === ids[i] ? n : { ...n, sec: ids[i] }));
+
+/** Gives every note (of both voices) an explicit section, so sections can be renamed, reordered or deleted. */
+export function materialize(song: Song): Song {
+  const sections = sectionsOf(song);
+  const out: Song = { ...song, sections, form: formOf(song), notes: withSec(song.notes, sectionIds(song)) };
+  if (song.second) out.second = { ...song.second, notes: withSec(song.second.notes, sectionIds({ ...song, notes: song.second.notes })) };
+  return out;
+}
+
+/** Ticks from the start of note `index`'s section to the note. */
+function offsetInSection(song: Pick<Song, "notes" | "sections">, index: number): number {
+  const id = sectionIds(song)[index];
+  const [start] = sectionRange(song, id);
+  let t = 0;
+  for (let i = start; i < index; i++) t += ticks(song.notes[i]);
+  return t;
+}
+
+/**
+ * Starts a new section at note `index` of voice `voice`: from that point in time, the rest of its
+ * section moves into the new one, in both voices. Wherever the old section is in the form, the new
+ * one follows, so the song sounds the same.
+ */
+export function splitSection(song: Song, index: number, name: string, voice: 0 | 1 = 0): Song {
   const s = materialize(song);
-  const id = s.notes[index]?.sec;
+  const notes = voice === 1 && s.second ? s.second.notes : s.notes;
+  const id = notes[index]?.sec;
   if (!id) return song;
-  const [start, end] = sectionRange(s, id);
-  if (index === start) return song;
+  const at = offsetInSection({ ...s, notes }, index);
+  if (at === 0) return song;
   const sec: Section = { id: newId(), name };
-  const at = s.sections!.findIndex((x) => x.id === id);
-  return {
-    ...s,
-    sections: [...s.sections!.slice(0, at + 1), sec, ...s.sections!.slice(at + 1)],
-    form: s.form!.flatMap((f) => (f === id ? [f, sec.id] : [f])),
-    notes: s.notes.map((n, i) => (i >= index && i < end ? { ...n, sec: sec.id } : n)),
+  // Notes of the section that start at or after the split move to the new section.
+  const move = (list: NoteEvent[]) => {
+    let t = 0;
+    return list.map((n) => {
+      if (n.sec !== id) return n;
+      const start = t;
+      t += ticks(n);
+      return start >= at ? { ...n, sec: sec.id } : n;
+    });
   };
+  const pos = s.sections!.findIndex((x) => x.id === id);
+  const out: Song = {
+    ...s,
+    sections: [...s.sections!.slice(0, pos + 1), sec, ...s.sections!.slice(pos + 1)],
+    form: s.form!.flatMap((f) => (f === id ? [f, sec.id] : [f])),
+    notes: move(s.notes),
+  };
+  if (s.second) out.second = { ...s.second, notes: move(s.second.notes) };
+  return out;
 }
 
 /** Adds an empty section at the end and to the end of the form. */
@@ -134,7 +176,9 @@ export function renameSection(song: Song, id: string, name: string): Song {
 export function deleteSection(song: Song, id: string): Song {
   const s = materialize(song);
   if (s.sections!.length < 2) return song;
-  return { ...s, sections: s.sections!.filter((x) => x.id !== id), form: s.form!.filter((f) => f !== id), notes: s.notes.filter((n) => n.sec !== id) };
+  const out: Song = { ...s, sections: s.sections!.filter((x) => x.id !== id), form: s.form!.filter((f) => f !== id), notes: s.notes.filter((n) => n.sec !== id) };
+  if (s.second) out.second = { ...s.second, notes: s.second.notes.filter((n) => n.sec !== id) };
+  return out;
 }
 
 export function setForm(song: Song, form: string[]): Song {

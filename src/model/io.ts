@@ -1,5 +1,5 @@
 import { clampPitch, DURATIONS, emptySong, newId } from "./music";
-import type { Alter, Duration, NoteEvent, Song } from "./types";
+import type { Alter, Duration, Instrument, NoteEvent, Song, Voice } from "./types";
 
 export const FORMAT = "mmusicscore";
 
@@ -32,7 +32,8 @@ export function normalizeSong(raw: unknown): Song {
   if (!raw || typeof raw !== "object" || !Array.isArray((raw as Song).notes)) throw new Error("Not a valid song.");
   const r = raw as Partial<Song>;
   const base = emptySong();
-  return {
+  const secs = normalizeSections(r, (r.notes as unknown[]).map(normalizeNote));
+  const song: Song = {
     ...base,
     title: str(r.title, base.title),
     composer: str(r.composer),
@@ -41,11 +42,24 @@ export function normalizeSong(raw: unknown): Song {
     beatType: [1, 2, 4, 8, 16].includes(r.beatType as number) ? (r.beatType as number) : 4,
     fifths: num(r.fifths, 0, -7, 7),
     clef: r.clef === "bass" ? "bass" : "treble",
-    ...normalizeSections(r, (r.notes as unknown[]).map(normalizeNote)),
+    ...secs,
     createdAt: num(r.createdAt, base.createdAt, 0, Number.MAX_SAFE_INTEGER),
     updatedAt: num(r.updatedAt, base.updatedAt, 0, Number.MAX_SAFE_INTEGER),
   };
+  const instrument = normalizeInstrument(r.instrument);
+  if (instrument) song.instrument = instrument;
+  const v = r.second as Partial<Voice> | undefined;
+  if (v && typeof v === "object" && Array.isArray(v.notes)) {
+    // The second voice uses the song's sections; its notes are placed the same way.
+    const notes = normalizeSections({ sections: secs.sections, form: secs.form }, v.notes.map(normalizeNote)).notes;
+    song.second = { clef: v.clef === "bass" ? "bass" : "treble", notes };
+    const vi = normalizeInstrument(v.instrument);
+    if (vi) song.second.instrument = vi;
+  }
+  return song;
 }
+
+const normalizeInstrument = (x: unknown): Instrument | undefined => (x === "flute" || x === "piano" ? x : undefined);
 
 /**
  * Keeps valid sections and form, and sorts notes section by section (stable), so each section's

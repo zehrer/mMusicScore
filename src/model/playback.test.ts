@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { holdTime, pianoTone } from "./playback";
+import { fluteTone, holdTime, pianoTone } from "./playback";
 
 /** Just enough of the Web Audio API to see what a note schedules. */
 function fakeAudio() {
@@ -63,5 +63,17 @@ describe("piano sound", () => {
     expect(holdTime(0.5, 0.5)).toBeCloseTo(0.8);
     expect(holdTime(0.5, 4)).toBeCloseTo(2);
     expect(new Function(`return ${holdTime.toString()}`)()(0.5, 0.5)).toBeCloseTo(0.8);
+  });
+
+  it("plays a flute: three harmonics, vibrato and breath, also as embedded source", () => {
+    for (const fn of [fluteTone, new Function(`return ${fluteTone.toString()}`)() as typeof fluteTone]) {
+      const { ac, log } = fakeAudio();
+      const stop = fn(ac, {} as AudioNode, 72, 0, 0.5);
+      expect(log.filter((l) => l === "osc start 0")).toHaveLength(4); // 3 harmonics + vibrato
+      expect(log).toContain("noise start 0");
+      log.length = 0;
+      stop();
+      expect(log.filter((l) => l.endsWith("stop"))).toHaveLength(5);
+    }
   });
 });

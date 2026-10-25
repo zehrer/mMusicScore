@@ -7,6 +7,7 @@ import { addSong, addSongs, deleteSong, loadAll } from "../model/persist";
 import { play, stop } from "../model/playback";
 import { sampleSongs } from "../model/samples";
 import { expand } from "../model/sections";
+import { onsets, voiceSong } from "../model/voices";
 import { deleteSelection, pasteNotes, selectedNotes, useStore } from "../model/store";
 import type { NoteEvent, Song } from "../model/types";
 
@@ -100,17 +101,19 @@ export function playFrom(i: number) {
  * or stops playback.
  */
 export function togglePlay() {
-  const { isPlaying, song, sel } = state();
+  const { isPlaying, song, sel, voice } = state();
   if (isPlaying) return stop();
-  const { song: played, src } = expand(song);
-  if (!played.notes.length) return;
-  const from = sel === null ? 0 : Math.max(0, src.indexOf(sel));
-  useStore.setState({ isPlaying: true, playingSong: played, playingSrc: src, playing: null });
+  const { song: played, src, src2 } = expand(song);
+  if (!played.notes.length && !played.second?.notes.length) return;
+  // Start where the selected note (of the voice being edited) first comes up in the form.
+  const k = sel === null ? -1 : (voice === 0 ? src : src2).indexOf(sel);
+  const from = k < 0 ? 0 : onsets(voiceSong(played, voice).notes)[k];
+  useStore.setState({ isPlaying: true, playingSong: played, playingSrc: src, playingSrc2: src2, playing: null, playing2: null });
   play(
     played,
     from,
-    (i) => useStore.setState({ playing: i }),
-    () => useStore.setState({ playing: null, isPlaying: false, playingSong: null, playingSrc: null }),
+    ([a, b]) => useStore.setState({ playing: a, playing2: b }),
+    () => useStore.setState({ playing: null, playing2: null, isPlaying: false, playingSong: null, playingSrc: null, playingSrc2: null }),
   );
 }
 

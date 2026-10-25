@@ -3,6 +3,7 @@ export type Duration = 1 | 2 | 4 | 8 | 16;
 /** Chromatic alteration: flat, natural, sharp. */
 export type Alter = -1 | 0 | 1;
 export type Clef = "treble" | "bass";
+export type Instrument = "piano" | "flute";
 
 export interface NoteEvent {
   id: string;
@@ -44,8 +45,19 @@ export interface Song {
   sections?: Section[];
   /** Order in which sections are played, by id; may repeat. Without one, each section once. */
   form?: string[];
+  /** Sound of the first voice; piano when not set. */
+  instrument?: Instrument;
+  /** A second voice on its own staff below the first, in the same sections. */
+  second?: Voice;
   createdAt: number;
   updatedAt: number;
+}
+
+export interface Voice {
+  clef: Clef;
+  instrument?: Instrument;
+  /** Like Song.notes: section after section. */
+  notes: NoteEvent[];
 }
 
 /** What the library list shows without loading every song. */

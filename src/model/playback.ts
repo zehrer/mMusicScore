@@ -1,5 +1,6 @@
 import { midi, resolveAccidentals, ticks } from "./music";
-import type { Song } from "./types";
+import type { Instrument, Song } from "./types";
+import { instrumentOf, onsets, voiceSong, type VoiceIndex } from "./voices";
 
 let ctx: AudioContext | null = null;
 let stopCurrent: (() => void) | null = null;
@@ -53,9 +54,14 @@ function playbackCategory() {
   void silent.play().catch(() => {});
 }
 
-function audio() {
+const AudioCtor = () => (typeof window === "undefined" ? undefined : window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+
+/** The audio context, or null where the browser has no Web Audio (then the app stays silent). */
+function audio(): AudioContext | null {
+  const Ctor = AudioCtor();
+  if (!Ctor) return null;
   playbackCategory();
-  ctx ??= new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)();
+  ctx ??= new Ctor();
   if (ctx.state !== "running") void ctx.resume();
   return ctx;
 }
@@ -142,13 +148,108 @@ export function pianoTone(ac: AudioContext, out: AudioNode, m: number, at: numbe
 }
 
 /**
+ * A flute-like note: a nearly pure tone with a little second and third harmonic, breath noise
+ * that puffs at the start and then stays faint, a soft attack, and a vibrato that sets in after
+ * a moment. Unlike the piano it holds its volume until released.
+ *
+ * Self-contained on purpose: the HTML export embeds this function's source to sound the same.
+ */
+export function fluteTone(ac: AudioContext, out: AudioNode, m: number, at: number, len: number): () => void {
+  const f = 440 * Math.pow(2, (m - 69) / 12);
+  const end = at + Math.max(len, 0.08);
+  const nodes: AudioScheduledSourceNode[] = [];
+
+  const body = ac.createGain();
+  body.gain.setValueAtTime(0.0001, at);
+  body.gain.linearRampToValueAtTime(0.2, at + 0.06);
+  body.gain.setTargetAtTime(0.16, at + 0.06, 0.15);
+  body.gain.setTargetAtTime(0.0001, end, 0.05);
+  const soft = ac.createBiquadFilter();
+  soft.type = "lowpass";
+  soft.frequency.value = Math.min(12000, f * 5);
+  soft.connect(body).connect(out);
+
+  // Vibrato: about 5 Hz, fading in after the attack.
+  const lfo = ac.createOscillator();
+  lfo.frequency.value = 5.2;
+  const depth = ac.createGain();
+  depth.gain.setValueAtTime(0, at);
+  depth.gain.setValueAtTime(0, at + 0.18);
+  depth.gain.linearRampToValueAtTime(f * 0.005, at + 0.55);
+  lfo.connect(depth);
+  lfo.start(at);
+  lfo.stop(end + 0.4);
+  nodes.push(lfo);
+
+  [
+    [1, 1],
+    [2, 0.22],
+    [3, 0.08],
+  ].forEach(([h, amp]) => {
+    const o = ac.createOscillator();
+    o.frequency.value = f * h;
+    const g = ac.createGain();
+    g.gain.value = amp;
+    // The vibrato bends every harmonic by the same share of its pitch.
+    const d = ac.createGain();
+    d.gain.value = h;
+    depth.connect(d).connect(o.frequency);
+    o.connect(g).connect(soft);
+    o.start(at);
+    o.stop(end + 0.4);
+    nodes.push(o);
+  });
+
+  // Breath: band-passed noise, a puff at the start, then a faint hiss.
+  const n = Math.ceil(ac.sampleRate * 0.5);
+  const buf = ac.createBuffer(1, n, ac.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < n; i++) data[i] = Math.random() * 2 - 1;
+  const noise = ac.createBufferSource();
+  noise.buffer = buf;
+  noise.loop = true;
+  const band = ac.createBiquadFilter();
+  band.type = "bandpass";
+  band.frequency.value = Math.min(9000, f * 2);
+  band.Q.value = 0.8;
+  const breath = ac.createGain();
+  breath.gain.setValueAtTime(0.0001, at);
+  breath.gain.linearRampToValueAtTime(0.12, at + 0.03);
+  breath.gain.setTargetAtTime(0.025, at + 0.03, 0.08);
+  breath.gain.setTargetAtTime(0.0001, end, 0.04);
+  noise.connect(band).connect(breath).connect(out);
+  noise.start(at);
+  noise.stop(end + 0.4);
+  nodes.push(noise);
+
+  return () =>
+    nodes.forEach((x) => {
+      try {
+        x.stop();
+      } catch {
+        /* already stopped */
+      }
+    });
+}
+
+/** Plays one note right away in the given sound, e.g. when it is entered or moved. */
+export function auditionWith(instrument: Instrument, m: number) {
+  const ac = audio();
+  if (!ac) return;
+  (instrument === "flute" ? fluteTone : pianoTone)(ac, ac.destination, m, ac.currentTime, 0.6);
+}
+
+/**
  * iOS starts audio only from a completed tap (touchend or click), not from pointerdown, which the
  * piano and note entry use; the first tap anywhere therefore wakes the audio context up.
  */
 export function unlockAudioOnFirstTap() {
   const unlock = () => {
-    ctx ??= new (window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext!)();
-    if (ctx.state !== "running") void ctx.resume();
+    const Ctor = AudioCtor();
+    if (Ctor) {
+      ctx ??= new Ctor();
+      if (ctx.state !== "running") void ctx.resume();
+    }
     document.removeEventListener("touchend", unlock);
     document.removeEventListener("click", unlock);
   };
@@ -156,47 +257,66 @@ export function unlockAudioOnFirstTap() {
   document.addEventListener("click", unlock);
 }
 
-/** Plays one note right away, e.g. when it is entered or moved. */
-export function audition(m: number) {
-  const ac = audio();
-  pianoTone(ac, ac.destination, m, ac.currentTime, 0.6);
-}
-
 /**
  * Plays the song from note `from`. `onNote` gets the index of each note as it starts, `onEnd` runs
  * at the end or when stopped.
  */
-export function play(song: Song, from: number, onNote: (i: number) => void, onEnd: () => void) {
+/** Sounding note of each voice (null when the voice is silent or over). */
+export type Playing = [number | null, number | null];
+
+/**
+ * Plays the song from tick `from` (time from the start), both voices together, each with its own
+ * sound. `onNote` gets the sounding note of each voice whenever one changes, `onEnd` runs at the
+ * end or when stopped.
+ */
+export function play(song: Song, from: number, onNote: (p: Playing) => void, onEnd: () => void) {
   stop();
   const ac = audio();
+  if (!ac) return onEnd();
   const master = ac.createGain();
   master.connect(ac.destination);
   const tickSec = 60 / song.tempo / 16;
-  const resolved = resolveAccidentals(song);
   const start = ac.currentTime + 0.08;
-  const times: number[] = [];
   const stops: (() => void)[] = [];
-  let t = start;
-  for (let i = from; i < song.notes.length; i++) {
-    const n = song.notes[i];
-    const len = ticks(n) * tickSec;
-    times.push(t);
-    const next = song.notes[i + 1];
-    const restAfter = next?.rest ? ticks(next) * tickSec : 0;
-    if (!n.rest) stops.push(pianoTone(ac, master, midi(n.pitch, resolved[i].actual), t, holdTime(len, restAfter)));
-    t += len;
-  }
-  const end = t;
+  const voices = (song.second ? [0, 1] : [0]) as VoiceIndex[];
+  // Per voice: start time and index of every scheduled note, and when the voice falls silent.
+  const tracks = voices.map((v) => {
+    const vs = voiceSong(song, v);
+    const tone = instrumentOf(song, v) === "flute" ? fluteTone : pianoTone;
+    const resolved = resolveAccidentals(vs);
+    const times: number[] = [];
+    const idx: number[] = [];
+    const at = onsets(vs.notes);
+    let end = start;
+    vs.notes.forEach((n, i) => {
+      if (at[i] < from) return;
+      const t = start + (at[i] - from) * tickSec;
+      const len = ticks(n) * tickSec;
+      times.push(t);
+      idx.push(i);
+      end = t + len;
+      const next = vs.notes[i + 1];
+      const restAfter = next?.rest ? ticks(next) * tickSec : 0;
+      if (!n.rest) stops.push(tone(ac, master, midi(n.pitch, resolved[i].actual), t, holdTime(len, restAfter)));
+    });
+    return { times, idx, end };
+  });
+  const end = Math.max(start, ...tracks.map((t) => t.end));
   let raf = 0;
-  let last = -2;
+  let last = "";
   const tick = () => {
     const now = ac.currentTime;
     if (now >= end) return finish();
-    let k = times.length - 1;
-    while (k > 0 && times[k] > now) k--;
-    const idx = now < start ? -1 : from + k;
-    if (idx !== last && idx >= 0) onNote(idx);
-    last = idx;
+    const cur = tracks.map(({ times, idx, end: e }) => {
+      if (now < start || now >= e || !times.length || times[0] > now) return null;
+      let k = times.length - 1;
+      while (k > 0 && times[k] > now) k--;
+      return idx[k];
+    });
+    const p: Playing = [cur[0] ?? null, cur[1] ?? null];
+    const key = p.join();
+    if (key !== last && (p[0] !== null || p[1] !== null)) onNote(p);
+    last = key;
     raf = requestAnimationFrame(tick);
   };
   const finish = () => {

@@ -43,3 +43,34 @@ describe("layout", () => {
     expect(systems[2].measures[0].extra).toBe(true);
   });
 });
+
+describe("layout with a second voice", () => {
+  const two = (a: string, b: string) => ({ ...emptySong(), notes: parseMelody(a), second: { clef: "bass" as const, notes: parseMelody(b) } });
+
+  it("puts notes that sound together above each other", () => {
+    const l = layoutScore(two("C4/2 D4/2 | E4/1", "C3 D3 E3 F3 | G3/1"));
+    expect(l.noteX[0]).toBe(l.noteX2[0]);
+    expect(l.noteX[1]).toBe(l.noteX2[2]);
+    expect(l.noteX[2]).toBe(l.noteX2[4]);
+    // Quarter notes in between get their own places.
+    expect(l.noteX2[1]).toBeGreaterThan(l.noteX[0]);
+    expect(l.noteX2[1]).toBeLessThan(l.noteX[1]);
+    const sys = l.pages[0][0];
+    expect(sys.y2).toBeGreaterThan(sys.y + 40);
+    expect(sys.measures.map((m) => [m.start, m.end, m.start2, m.end2, !!m.last])).toEqual([
+      [0, 2, 0, 4, false],
+      [2, 3, 4, 5, true],
+      [3, 3, 5, 5, false],
+    ]);
+  });
+
+  it("gives a shorter second voice empty measures to fill", () => {
+    const l = layoutScore(two("C4/1 | D4/1", "C3/1"));
+    const ms = l.pages[0][0].measures;
+    expect(ms.map((m) => [m.start2, m.end2, !!m.extra])).toEqual([
+      [0, 1, false],
+      [1, 1, false],
+      [1, 1, true],
+    ]);
+  });
+});

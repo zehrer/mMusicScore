@@ -1,5 +1,6 @@
 import { midi, octave, resolveAccidentals, step } from "../model/music";
-import { insertPitch, playingHere, useStore } from "../model/store";
+import { insertPitch, playingHere, playingHere2, useStore } from "../model/store";
+import { voiceSong } from "../model/voices";
 import type { Alter } from "../model/types";
 
 const WHITE_W = 26;
@@ -29,17 +30,26 @@ function keys(lowest: number, fifths: number): Key[] {
 
 /** A small keyboard below the score: a click enters the note after the selection. */
 export function Piano() {
-  const song = useStore((s) => s.song);
+  // Range, key and selection of the voice being edited; during playback both voices light up.
+  const whole = useStore((s) => s.song);
+  const voice = useStore((s) => s.voice);
+  const song = voiceSong(whole, voice);
   const sel = useStore((s) => s.sel);
-  const playing = useStore(playingHere);
+  const playing1 = useStore(playingHere);
+  const playing2 = useStore(playingHere2);
   const playingSong = useStore((s) => s.playingSong);
   const lowest = song.clef === "bass" ? 14 : 21; // C2 or C3
   const resolved = resolveAccidentals(song);
   // The sounding note comes from the played form; otherwise the selected note lights up.
   const lit = new Set<number>();
-  const pn = playing !== null ? playingSong?.notes[playing] : undefined;
-  if (pn && playingSong && !pn.rest) lit.add(midi(pn.pitch, resolveAccidentals(playingSong)[playing!].actual));
-  else if (playing === null && sel !== null && song.notes[sel] && !song.notes[sel].rest) lit.add(midi(song.notes[sel].pitch, resolved[sel].actual));
+  const playing = playing1 !== null || playing2 !== null;
+  if (playing && playingSong) {
+    ([playing1, playing2] as const).forEach((i, v) => {
+      const vs = voiceSong(playingSong, v as 0 | 1);
+      const n = i !== null ? vs.notes[i] : undefined;
+      if (n && !n.rest) lit.add(midi(n.pitch, resolveAccidentals(vs)[i!].actual));
+    });
+  } else if (sel !== null && song.notes[sel] && !song.notes[sel].rest) lit.add(midi(song.notes[sel].pitch, resolved[sel].actual));
   const all = keys(lowest, song.fifths);
   const width = 22 * WHITE_W;
 

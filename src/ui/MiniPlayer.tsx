@@ -52,7 +52,7 @@ export function MiniPlayer() {
       </div>
       <svg className="mini-staff" viewBox={`0 ${sys.y - VIEW_TOP} ${VIEW_W} ${VIEW_H}`} onClick={() => openSaved(playingSong.id)}>
         <g className="mini-scroll" style={{ transform: `translateX(${-left}px)` }}>
-          <Staff sys={sys} song={playingSong} final={sys.end === playingSong.notes.length} />
+          <Staff sys={sys} song={playingSong} />
           {playingSong.notes.slice(sys.start, sys.end).map((n, k) => {
             const j = sys.start + k;
             const y = n.rest ? sys.y + 2 * S : pitchY(sys, n.pitch, bottom);

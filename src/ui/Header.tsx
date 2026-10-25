@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deleteSong } from "../model/persist";
-import { change, deleteSelection, redo, selectAll, setShowLibrary, setNameStyle, setShowNames, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, undo, useStore } from "../model/store";
+import { addVoice, change, deleteSelection, redo, removeVoice, selectAll, setShowLibrary, setNameStyle, setShowNames, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, undo, useStore } from "../model/store";
 import * as A from "./actions";
 import { About, Shortcuts } from "./Dialogs";
 import { MenuList, type MenuItem } from "./Menu";
@@ -45,6 +45,13 @@ export function Header() {
         { label: "Cut", shortcut: `${MOD}X`, disabled: s.sel === null, action: () => A.copySelection(true) },
         { label: "Copy", shortcut: `${MOD}C`, disabled: s.sel === null, action: () => A.copySelection() },
         { label: "Paste", shortcut: `${MOD}V`, action: A.pasteFromMenu },
+        "-",
+        s.song.second
+          ? {
+              label: "Remove second voice…",
+              action: () => (!s.song.second!.notes.length || confirm("Remove the second voice with all its notes?")) && removeVoice(),
+            }
+          : { label: "Add second voice", action: addVoice },
         "-",
         { label: "Select all", shortcut: `${MOD}A`, disabled: !s.song.notes.length, action: selectAll },
         { label: s.anchor !== null && s.anchor !== s.sel ? "Delete notes" : "Delete note", shortcut: "⌫", disabled: s.sel === null, action: deleteSelection },

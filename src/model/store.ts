@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { clampPitch, emptySong, midi, nearestPitch, newId, resolveAccidentals, type NameStyle } from "./music";
-import { audition } from "./playback";
+import { auditionWith } from "./playback";
+import { addSecondVoice, instrumentOf, removeSecondVoice, voiceSong, withVoice, type VoiceIndex } from "./voices";
 import { addSection, deleteSection, renameSection, sectionsOf, setForm, splitSection, verseOf, withVerse } from "./sections";
 import type { Alter, Duration, NoteEvent, Song, SongInfo } from "./types";
 
@@ -44,6 +45,8 @@ interface State {
   songs: SongInfo[];
   undo: Song[];
   redo: Song[];
+  /** Voice being edited: selection, entry and lyrics apply to it. */
+  voice: VoiceIndex;
   sel: number | null;
   /** Other end of a range selection (Shift); the range runs from `anchor` to `sel`. */
   anchor: number | null;
@@ -55,6 +58,9 @@ interface State {
   playingSong: Song | null;
   /** For each note of `playingSong` (the form written out), its index in the song. */
   playingSrc: number[] | null;
+  /** Sounding note of the second voice, and the same mapping for it. */
+  playing2: number | null;
+  playingSrc2: number[] | null;
   /** View: read and play only, with a slim bar (the default on phones). Edit: all tools. */
   mode: "view" | "edit";
   /** Compact: each section once, as written. Expanded: the form written out. */
@@ -87,6 +93,7 @@ export const useStore = create<State>(() => ({
   songs: [],
   undo: [],
   redo: [],
+  voice: 0,
   sel: null,
   anchor: null,
   input: { dur: 4, dots: 0, rest: false },
@@ -94,6 +101,8 @@ export const useStore = create<State>(() => ({
   isPlaying: false,
   playingSong: null,
   playingSrc: null,
+  playing2: null,
+  playingSrc2: null,
   mode: isPhone() ? "view" : "edit",
   view: loadFlag("expanded", false) ? "expanded" : "compact",
   zoom: loadZoom(),
@@ -185,13 +194,40 @@ export function selRange(s: Pick<State, "sel" | "anchor">): [number, number] | n
 
 /** The sounding note if playback is of the open song, else null. */
 export const playingHere = (s: State) => (s.playingSong?.id === s.song.id ? s.playing : null);
+export const playingHere2 = (s: State) => (s.playingSong?.id === s.song.id ? s.playing2 : null);
 
 const get = useStore.getState;
 const set = useStore.setState;
 
 /** Shows `song` with a fresh undo history; `dirty` saves it right away. */
 export function openSong(song: Song, dirty = false) {
-  set((s) => ({ song, undo: [], redo: [], sel: null, anchor: null, lyricEdit: null, revision: dirty ? s.revision + 1 : s.revision }));
+  set((s) => ({ song, undo: [], redo: [], voice: 0, sel: null, anchor: null, lyricEdit: null, revision: dirty ? s.revision + 1 : s.revision }));
+}
+
+/** The voice being edited, seen as a song (its notes and clef). */
+export const cur = () => voiceSong(get().song, get().voice);
+
+/** Applies a change to the voice being edited (see `change`). */
+export function changeV(fn: (voice: Song) => Song, opts: Parameters<typeof change>[1] = {}) {
+  const v = get().voice;
+  change((song) => withVoice(song, v, fn(voiceSong(song, v))), opts);
+}
+
+/** Switches the voice being edited; `sel` selects a note in it. */
+export function setVoice(v: VoiceIndex, sel: number | null = null) {
+  if (v === 1 && !get().song.second) return;
+  if (v !== get().voice) set({ voice: v, sel: null, anchor: null, lyricEdit: null });
+  if (sel !== null) select(sel);
+}
+
+export function addVoice() {
+  change((s) => addSecondVoice(s));
+  setVoice(1);
+}
+
+export function removeVoice() {
+  set({ voice: 0, sel: null, anchor: null });
+  change((s) => removeSecondVoice(s));
 }
 
 /**
@@ -219,14 +255,14 @@ export function undo() {
   const { undo, redo, song, revision, sel } = get();
   const prev = undo[undo.length - 1];
   if (!prev) return;
-  set({ song: prev, undo: undo.slice(0, -1), redo: [...redo, song], revision: revision + 1, sel: clampSel(sel, prev), anchor: null });
+  set({ song: prev, undo: undo.slice(0, -1), redo: [...redo, song], revision: revision + 1, sel: clampSel(sel, voiceSong(prev, get().voice)), anchor: null });
 }
 
 export function redo() {
   const { undo, redo, song, revision, sel } = get();
   const next = redo[redo.length - 1];
   if (!next) return;
-  set({ song: next, redo: redo.slice(0, -1), undo: [...undo, song], revision: revision + 1, sel: clampSel(sel, next), anchor: null });
+  set({ song: next, redo: redo.slice(0, -1), undo: [...undo, song], revision: revision + 1, sel: clampSel(sel, voiceSong(next, get().voice)), anchor: null });
 }
 
 const clampSel = (sel: number | null, song: Song) => (sel === null || !song.notes.length ? null : Math.min(sel, song.notes.length - 1));
@@ -236,17 +272,17 @@ const updateNotes = (fn: (notes: NoteEvent[]) => NoteEvent[]) => (s: Song) => ({
 /** Where entered notes go: after the selection, or at the end. */
 const insertionPoint = () => {
   const r = selRange(get());
-  return r ? r[1] + 1 : get().song.notes.length;
+  return r ? r[1] + 1 : cur().notes.length;
 };
 
 /** Changes every selected note (one undo step); `fn` returns the note unchanged to skip it. */
 function updateSelected(fn: (n: NoteEvent) => NoteEvent) {
   const r = selRange(get());
   if (!r) return;
-  const notes = get().song.notes;
+  const notes = cur().notes;
   const next = notes.map((n, j) => (j >= r[0] && j <= r[1] ? fn(n) : n));
   if (next.every((n, j) => n === notes[j])) return;
-  change((s) => ({ ...s, notes: next }));
+  changeV((s) => ({ ...s, notes: next }));
 }
 
 /** Copy of `n` with `patch`; undefined values remove the field. */
@@ -258,10 +294,10 @@ function patched(n: NoteEvent, patch: Partial<NoteEvent>): NoteEvent {
 
 /** Plays the note at `i` the way it sounds in context. */
 export function auditionAt(i: number) {
-  const { song } = get();
+  const song = cur();
   const n = song.notes[i];
   if (!n || n.rest || get().isPlaying) return;
-  audition(midi(n.pitch, resolveAccidentals(song)[i].actual));
+  auditionWith(instrumentOf(get().song, get().voice), midi(n.pitch, resolveAccidentals(song)[i].actual));
 }
 
 /**
@@ -269,7 +305,7 @@ export function auditionAt(i: number) {
  * the end. Clicks pass the section of the system they hit.
  */
 function sectionForInsert(): string | undefined {
-  const { song } = get();
+  const song = cur();
   if (!song.sections?.length) return undefined;
   const r = selRange(get());
   return (r && song.notes[r[1]]?.sec) || song.sections[song.sections.length - 1].id;
@@ -281,13 +317,13 @@ export function insertNote(index: number, pitch: number, rest = get().input.rest
   if (dots) n.dots = 1;
   if (rest) n.rest = true;
   if (sec) n.sec = sec;
-  change(updateNotes((ns) => [...ns.slice(0, index), n, ...ns.slice(index)]), { sel: index });
+  changeV(updateNotes((ns) => [...ns.slice(0, index), n, ...ns.slice(index)]), { sel: index });
   auditionAt(index);
 }
 
 /** Letter entry: the note goes after the selection, in the octave closest to the note before it. */
 export function insertStep(step: number) {
-  const { song } = get();
+  const song = cur();
   const index = insertionPoint();
   const ref = song.notes[index - 1]?.pitch ?? (song.clef === "bass" ? 21 : 33);
   insertNote(index, nearestPitch(step, ref), false);
@@ -301,21 +337,21 @@ export function insertPitch(pitch: number, alter: Alter) {
   if (input.dots) n.dots = 1;
   const sec = sectionForInsert();
   if (sec) n.sec = sec;
-  change(updateNotes((ns) => [...ns.slice(0, index), n, ...ns.slice(index)]), { sel: index });
+  changeV(updateNotes((ns) => [...ns.slice(0, index), n, ...ns.slice(index)]), { sel: index });
   if (input.rest) set({ input: { ...input, rest: false } });
   auditionAt(index);
 }
 
 /** Sets the syllable of verse `v` on note `i`; a trailing "-" joins it to the next syllable. */
 export function setLyric(i: number, lyric: string, v = 0) {
-  const n = get().song.notes[i];
+  const n = cur().notes[i];
   if (!n || (verseOf(n, v) ?? "") === lyric) return;
-  change(updateNotes((ns) => ns.map((m, j) => (j === i ? withVerse(m, v, lyric) : m))));
+  changeV(updateNotes((ns) => ns.map((m, j) => (j === i ? withVerse(m, v, lyric) : m))));
 }
 
 /** Starts typing lyrics at note `i` (the selection, or the first note), in verse `v`. */
 export function editLyric(i: number | null, v = get().lyricVerse) {
-  const { song } = get();
+  const song = cur();
   if (i === null || !song.notes[i]) return set({ lyricEdit: null });
   // Lyrics are typed where each verse has its own line: in the compact view.
   set({ lyricEdit: i, lyricVerse: Math.max(0, Math.min(9, v)), sel: i, anchor: null, view: "compact" });
@@ -333,7 +369,7 @@ export function splitAtSelection(name: string) {
   const r = selRange(get());
   if (!r) return;
   const before = get().song;
-  const next = splitSection(before, r[0], name);
+  const next = splitSection(before, r[0], name, get().voice);
   if (next !== before) change(() => next);
 }
 
@@ -357,13 +393,13 @@ export function changeForm(form: string[]) {
 export const hasSections = (song: Song) => sectionsOf(song).length > 1 || !!sectionsOf(song)[0].name;
 
 export function insertRest() {
-  const { song } = get();
+  const song = cur();
   const index = insertionPoint();
   insertNote(index, song.notes[index - 1]?.pitch ?? 34, true);
 }
 
 export function updateNote(i: number, patch: Partial<NoteEvent>, record = true) {
-  change(
+  changeV(
     updateNotes((ns) =>
       ns.map((n, j) => (j === i ? patched(n, patch) : n)),
     ),
@@ -372,8 +408,8 @@ export function updateNote(i: number, patch: Partial<NoteEvent>, record = true) 
 }
 
 export function deleteNote(i: number) {
-  change(updateNotes((ns) => ns.filter((_, j) => j !== i)), {
-    sel: get().song.notes.length <= 1 ? null : Math.max(0, i - 1),
+  changeV(updateNotes((ns) => ns.filter((_, j) => j !== i)), {
+    sel: cur().notes.length <= 1 ? null : Math.max(0, i - 1),
   });
 }
 
@@ -390,7 +426,7 @@ export function showToast(text: string, undo = false) {
  * The note before becomes the selection, so the next swipe goes on backwards.
  */
 export function deleteLast() {
-  const { song } = get();
+  const song = cur();
   if (!song.notes.length) return;
   if (get().sel === null) set({ sel: song.notes.length - 1, anchor: null });
   const n = selRange(get())!;
@@ -402,8 +438,8 @@ export function deleteLast() {
 export function deleteSelection() {
   const r = selRange(get());
   if (!r) return;
-  const left = get().song.notes.length - (r[1] - r[0] + 1);
-  change(updateNotes((ns) => ns.filter((_, j) => j < r[0] || j > r[1])), { sel: left ? Math.max(0, r[0] - 1) : null });
+  const left = cur().notes.length - (r[1] - r[0] + 1);
+  changeV(updateNotes((ns) => ns.filter((_, j) => j < r[0] || j > r[1])), { sel: left ? Math.max(0, r[0] - 1) : null });
 }
 
 /** Transposes the selected notes by diatonic steps; written accidentals go away. */
@@ -418,7 +454,8 @@ export function moveSelected(steps: number) {
 
 /** Sets an accidental on the selected notes, or removes it when the current note already has it. */
 export function toggleAlter(alter: Alter) {
-  const { sel, song } = get();
+  const { sel } = get();
+  const song = cur();
   const n = sel !== null ? song.notes[sel] : undefined;
   if (!n || n.rest) return;
   const value = n.alter === alter ? undefined : alter;
@@ -433,7 +470,8 @@ export function setDuration(dur: Duration) {
 }
 
 export function toggleDot() {
-  const { sel, song, input } = get();
+  const { sel, input } = get();
+  const song = cur();
   const n = sel !== null ? song.notes[sel] : undefined;
   const dots = (n ? (n.dots ? 0 : 1) : input.dots ? 0 : 1) as 0 | 1;
   set({ input: { ...input, dots } });
@@ -442,7 +480,8 @@ export function toggleDot() {
 
 /** Switches rest entry; selected notes become rests or back. */
 export function toggleRest() {
-  const { sel, song, input } = get();
+  const { sel, input } = get();
+  const song = cur();
   const n = sel !== null ? song.notes[sel] : undefined;
   if (n) {
     updateSelected((m) => patched(m, { rest: n.rest ? undefined : true }));
@@ -452,7 +491,8 @@ export function toggleRest() {
 
 /** Selects note `i`; with `extend` (Shift) the selection grows from its anchor to `i`. */
 export function select(i: number | null, extend = false) {
-  const { song, input, sel, anchor } = get();
+  const { input, sel, anchor } = get();
+  const song = cur();
   const n = i !== null ? song.notes[i] : undefined;
   if (extend && n && sel !== null) return set({ sel: i, anchor: anchor ?? sel });
   // The toolbar reflects the selected note, so the next note continues with its value.
@@ -460,13 +500,13 @@ export function select(i: number | null, extend = false) {
 }
 
 export function selectAll() {
-  const len = get().song.notes.length;
+  const len = cur().notes.length;
   if (len) set({ anchor: 0, sel: len - 1 });
 }
 
 export function selectedNotes(): NoteEvent[] {
   const r = selRange(get());
-  return r ? get().song.notes.slice(r[0], r[1] + 1) : [];
+  return r ? cur().notes.slice(r[0], r[1] + 1) : [];
 }
 
 /** Inserts copies of `notes` after the selection (or at the end) and selects them. */
@@ -480,11 +520,16 @@ export function pasteNotes(notes: NoteEvent[]) {
     else delete copy.sec;
     return copy;
   });
-  change(updateNotes((ns) => [...ns.slice(0, at), ...copies, ...ns.slice(at)]), { sel: at + copies.length - 1, anchor: copies.length > 1 ? at : null });
+  changeV(updateNotes((ns) => [...ns.slice(0, at), ...copies, ...ns.slice(at)]), { sel: at + copies.length - 1, anchor: copies.length > 1 ? at : null });
 }
 
-export function setMeta(patch: Partial<Pick<Song, "title" | "composer" | "tempo" | "beats" | "beatType" | "fifths" | "clef">>) {
+export function setMeta(patch: Partial<Pick<Song, "title" | "composer" | "tempo" | "beats" | "beatType" | "fifths">>) {
   change((s) => ({ ...s, ...patch }));
+}
+
+/** Clef and sound belong to the voice being edited. */
+export function setVoiceMeta(patch: Partial<Pick<Song, "clef" | "instrument">>) {
+  changeV((s) => ({ ...s, ...patch }));
 }
 
 export const infoOf = (s: Song): SongInfo => ({ id: s.id, title: s.title, composer: s.composer, updatedAt: s.updatedAt });

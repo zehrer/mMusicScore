@@ -108,6 +108,10 @@ main { flex: 1; min-height: 0; display: flex; position: relative; }
 .view-tools button.on { background: var(--accent-soft); }
 .view-bar .edit-btn { margin-left: auto; color: var(--accent); font-weight: 500; }
 .toolbar .view-btn { color: var(--accent); font-weight: 500; }
+.toolbar .add-voice { color: var(--accent); }
+.segmented.voices button { width: 30px; font-weight: 600; }
+/* The voice not being edited steps back a little. */
+.voice.dim .note, .voice.dim .lyrics, .voice.dim .note-names { opacity: 0.45; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; }
 .toolbar > .icon-btn { width: 34px; padding: 0; border-radius: 50%; }
 .view-tools .icon-btn { padding: 6px 8px; }

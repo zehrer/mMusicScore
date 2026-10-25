@@ -50,7 +50,7 @@ export function ViewBar() {
           ＋ New
         </button>
       )}
-      <button className={`play big${s.isPlaying ? " on" : ""}`} disabled={!s.song.notes.length} onClick={A.togglePlay} title="Play / stop (Space); tap a note to start there">
+      <button className={`play big${s.isPlaying ? " on" : ""}`} disabled={!s.song.notes.length && !s.song.second?.notes.length} onClick={A.togglePlay} title="Play / stop (Space); tap a note to start there">
         {s.isPlaying ? "■ Stop" : "▶ Play"}
       </button>
       <span className="view-tools">

@@ -5,7 +5,8 @@
  */
 import { songToJSON } from "./io";
 import { midi, resolveAccidentals, ticks } from "./music";
-import { holdTime, pianoTone } from "./playback";
+import { fluteTone, holdTime, pianoTone } from "./playback";
+import { instrumentOf, voiceSong, type VoiceIndex } from "./voices";
 import type { Song } from "./types";
 
 export const DATA_ID = "mmusicscore-data";
@@ -18,6 +19,12 @@ export function playbackEvents(song: Song): [number | null, number][] {
   const resolved = resolveAccidentals(song);
   const tick = 60 / song.tempo / 16;
   return song.notes.map((n, i) => [n.rest ? null : midi(n.pitch, resolved[i].actual), +(ticks(n) * tick).toFixed(4)]);
+}
+
+/** Each voice's sound and notes, as the exported page plays them. */
+export function playbackTracks(song: Song): { sound: string; ev: [number | null, number][] }[] {
+  const voices: VoiceIndex[] = song.second ? [0, 1] : [0];
+  return voices.map((v) => ({ sound: instrumentOf(song, v), ev: playbackEvents(voiceSong(song, v)) }));
 }
 
 /** The song's embedded JSON from an exported file, or null if `html` is not one. */
@@ -90,22 +97,26 @@ export function toHTML(song: Song, pages: string, font: string, appUrl: string, 
 ${pages}
 <script type="application/json" id="${DATA_ID}">${scriptSafe(songToJSON(song))}</script>
 <script>
-  var EVENTS = ${JSON.stringify(playbackEvents(played))};
+  // Per voice: sound and [MIDI or null for a rest, seconds] of every note.
+  var TRACKS = ${JSON.stringify(playbackTracks(played))};
   var APP = ${scriptSafe(JSON.stringify(appUrl))};
   var ctx = null, stopAt = null, raf = 0;
   var btn = document.getElementById("play");
 
-  function notes(i) { return document.querySelectorAll('.note[data-i="' + i + '"]'); }
-  function mark(i, on) { notes(i).forEach(function (el) { el.classList.toggle("playing", on); }); }
+  function notes(v, i) { return document.querySelectorAll('.note[data-v="' + v + '"][data-i="' + i + '"]'); }
+  function mark(v, i, on) { notes(v, i).forEach(function (el) { el.classList.toggle("playing", on); }); }
+  // Start of every note in seconds, per voice.
+  var STARTS = TRACKS.map(function (tr) { var t = 0; return tr.ev.map(function (e) { var s = t; t += e[1]; return s; }); });
 
-  // The same piano sound as in the app (its source is embedded at export).
+  // The same sounds as in the app (their source is embedded at export).
   var pianoTone = ${scriptSafe(pianoTone.toString())};
+  var fluteTone = ${scriptSafe(fluteTone.toString())};
   var holdTime = ${scriptSafe(holdTime.toString())};
 
   // Scrolls once per line: when playback reaches a line that is not comfortably in view.
   var lastLine = null;
   function follow(el) {
-    var line = el.parentNode;
+    var line = el.closest(".system") || el.parentNode;
     if (line === lastLine) return;
     lastLine = line;
     var r = line.getBoundingClientRect(), h = window.innerHeight;
@@ -118,6 +129,7 @@ ${pages}
     stopAt();
   }
 
+  // Plays both voices from "from" seconds on.
   function play(from) {
     stop();
     // iPhone: play even with the ring/silent switch on (iOS 17+).
@@ -126,37 +138,44 @@ ${pages}
     if (ctx.state !== "running") ctx.resume();
     var master = ctx.createGain();
     master.connect(ctx.destination);
-    var start = ctx.currentTime + 0.08, t = start, times = [];
-    for (var i = from; i < EVENTS.length; i++) {
-      times.push(t);
-      var rest = EVENTS[i + 1] && EVENTS[i + 1][0] === null ? EVENTS[i + 1][1] : 0;
-      if (EVENTS[i][0] !== null) pianoTone(ctx, master, EVENTS[i][0], t, holdTime(EVENTS[i][1], rest));
-      t += EVENTS[i][1];
-    }
-    var end = t, cur = -1;
+    var start = ctx.currentTime + 0.08, end = start;
+    TRACKS.forEach(function (tr, v) {
+      var tone = tr.sound === "flute" ? fluteTone : pianoTone;
+      tr.ev.forEach(function (e, i) {
+        var at = STARTS[v][i];
+        if (at < from - 1e-6) return;
+        var t = start + at - from;
+        var next = tr.ev[i + 1];
+        var rest = next && next[0] === null ? next[1] : 0;
+        if (e[0] !== null) tone(ctx, master, e[0], t, holdTime(e[1], rest));
+        end = Math.max(end, t + e[1]);
+      });
+    });
+    var cur = TRACKS.map(function () { return -1; });
     btn.textContent = "■ Stop"; btn.classList.add("on");
     function tick() {
       var now = ctx.currentTime;
       if (now >= end) return stopAt();
-      var k = times.length - 1;
-      while (k > 0 && times[k] > now) k--;
-      var i = now < start ? -1 : from + k;
-      if (i !== cur) {
-        if (cur >= 0) mark(cur, false);
-        cur = i;
+      var pos = now - start + from;
+      TRACKS.forEach(function (tr, v) {
+        var i = -1;
+        if (now >= start) for (var k = 0; k < tr.ev.length; k++) if (STARTS[v][k] <= pos + 1e-6 && STARTS[v][k] >= from - 1e-6 && pos < STARTS[v][k] + tr.ev[k][1]) i = k;
+        if (i === cur[v]) return;
+        if (cur[v] >= 0) mark(v, cur[v], false);
+        cur[v] = i;
         if (i >= 0) {
-          mark(i, true);
-          var el = notes(i)[0];
-          if (el) follow(el);
+          mark(v, i, true);
+          var el = notes(v, i)[0];
+          if (el && v === 0) follow(el);
         }
-      }
+      });
       raf = requestAnimationFrame(tick);
     }
     stopAt = function () {
       cancelAnimationFrame(raf);
       master.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
       setTimeout(function () { master.disconnect(); }, 150);
-      if (cur >= 0) mark(cur, false);
+      cur.forEach(function (i, v) { if (i >= 0) mark(v, i, false); });
       lastLine = null;
       stopAt = null;
       btn.textContent = "▶ Play"; btn.classList.remove("on");
@@ -167,7 +186,7 @@ ${pages}
   btn.onclick = function () { stopAt ? stop() : play(0); };
   document.getElementById("print").onclick = function () { stop(); print(); };
   document.querySelectorAll(".note").forEach(function (el) {
-    el.addEventListener("click", function () { play(Number(el.getAttribute("data-i"))); });
+    el.addEventListener("click", function () { play(STARTS[Number(el.getAttribute("data-v"))][Number(el.getAttribute("data-i"))]); });
   });
   document.addEventListener("keydown", function (e) {
     if (e.key === " " && !e.metaKey && !e.ctrlKey) { e.preventDefault(); stopAt ? stop() : play(0); }
