@@ -6,6 +6,7 @@ import * as A from "./actions";
 import { ACCIDENTAL, NOTE_ICON, REST } from "./glyphs";
 import { LyricsIcon, NamesIcon, PianoIcon } from "./icons";
 import { MOD } from "./actions";
+import { PlayVoicesSelect } from "./PlayVoices";
 
 const TIMES = ["2/4", "3/4", "4/4", "5/4", "6/8", "3/8", "9/8", "12/8", "2/2"];
 
@@ -88,6 +89,7 @@ export function Toolbar() {
       <button className={`play${s.isPlaying ? " on" : ""}`} title="Play / stop (Space)" disabled={!hasNotes} onClick={A.togglePlay}>
         {s.isPlaying ? "■ Stop" : "▶ Play"}
       </button>
+      <PlayVoicesSelect />
       <span className="sep" />
       <label title={s.song.second ? `Clef of voice ${s.voice + 1}` : "Clef"}>
         <select value={song.clef} onChange={(e) => setVoiceMeta({ clef: e.target.value as "treble" | "bass" })}>

@@ -73,6 +73,8 @@ interface State {
   /** Short notice at the bottom, optionally with an Undo button. */
   toast: { text: string; undo?: boolean } | null;
   showPiano: boolean;
+  /** Which voices playback plays when the song has two. */
+  playVoices: PlayVoices;
   /** The song list on the left; on phones it slides in over the music. */
   showLibrary: boolean;
   /** Note names above the staff, in English or German naming. */
@@ -111,6 +113,7 @@ export const useStore = create<State>(() => ({
   toast: null,
   showPiano: loadFlag("showPiano", true),
   showLibrary: !isPhone() && loadFlag("showLibrary", true),
+  playVoices: loadPlayVoices(),
   showNames: loadFlag("showNames", false),
   nameStyle: loadNameStyle(),
   lyricEdit: null,
@@ -157,6 +160,28 @@ function loadNameStyle(): NameStyle {
   } catch {
     return "en";
   }
+}
+
+export type PlayVoices = "both" | "1" | "2";
+
+function loadPlayVoices(): PlayVoices {
+  try {
+    const v = localStorage.getItem("playVoices");
+    return v === "1" || v === "2" ? v : "both";
+  } catch {
+    return "both";
+  }
+}
+
+export function setPlayVoices(v: PlayVoices) {
+  set({ playVoices: v });
+  remember("playVoices", v);
+}
+
+/** Voices playback plays for `song`, by the setting. */
+export function playedVoices(song: Song, v: PlayVoices): VoiceIndex[] {
+  if (!song.second || v === "1") return [0];
+  return v === "2" ? [1] : [0, 1];
 }
 
 export function setShowLibrary(on: boolean) {

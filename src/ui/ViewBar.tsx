@@ -3,6 +3,7 @@ import { openSaved } from "../model/persist";
 import { hasSections, setMode, setShowNames, setView, setZoom, useStore } from "../model/store";
 import * as A from "./actions";
 import { NamesIcon } from "./icons";
+import { PlayVoicesSelect } from "./PlayVoices";
 
 /** Browser full screen, where pages may use it (not on iPhone). */
 function useFullscreen() {
@@ -53,6 +54,7 @@ export function ViewBar() {
       <button className={`play big${s.isPlaying ? " on" : ""}`} disabled={!s.song.notes.length && !s.song.second?.notes.length} onClick={A.togglePlay} title="Play / stop (Space); tap a note to start there">
         {s.isPlaying ? "■ Stop" : "▶ Play"}
       </button>
+      <PlayVoicesSelect />
       <span className="view-tools">
         {sectioned && (
           <button className={s.view === "expanded" ? "on" : ""} title="Write the form out" onClick={() => setView(s.view === "expanded" ? "compact" : "expanded")}>

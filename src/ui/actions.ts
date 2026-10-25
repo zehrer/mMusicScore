@@ -8,7 +8,7 @@ import { play, stop } from "../model/playback";
 import { sampleSongs } from "../model/samples";
 import { expand } from "../model/sections";
 import { onsets, voiceSong } from "../model/voices";
-import { deleteSelection, pasteNotes, selectedNotes, useStore } from "../model/store";
+import { deleteSelection, pasteNotes, playedVoices, selectedNotes, useStore } from "../model/store";
 import type { NoteEvent, Song } from "../model/types";
 
 const state = useStore.getState;
@@ -107,7 +107,7 @@ export function togglePlay() {
 
 /** `exact`: start at the selected note even if it is the last one (a tapped note). */
 function startPlayback(exact: boolean) {
-  const { song, sel, voice } = state();
+  const { song, sel, voice, playVoices } = state();
   const { song: played, src, src2 } = expand(song);
   if (!played.notes.length && !played.second?.notes.length) return;
   // Start where the selected note (of the voice being edited) first comes up in the form; from
@@ -121,6 +121,7 @@ function startPlayback(exact: boolean) {
     from,
     ([a, b]) => useStore.setState({ playing: a, playing2: b }),
     () => useStore.setState({ playing: null, playing2: null, isPlaying: false, playingSong: null, playingSrc: null, playingSrc2: null }),
+    playedVoices(song, playVoices),
   );
 }
 

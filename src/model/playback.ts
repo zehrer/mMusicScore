@@ -233,7 +233,7 @@ export type Playing = [number | null, number | null];
  * sound. `onNote` gets the sounding note of each voice whenever one changes, `onEnd` runs at the
  * end or when stopped.
  */
-export function play(song: Song, from: number, onNote: (p: Playing) => void, onEnd: () => void) {
+export function play(song: Song, from: number, onNote: (p: Playing) => void, onEnd: () => void, only?: VoiceIndex[]) {
   stop();
   const ac = audio();
   if (!ac) return onEnd();
@@ -242,7 +242,7 @@ export function play(song: Song, from: number, onNote: (p: Playing) => void, onE
   const tickSec = 60 / song.tempo / 16;
   const start = ac.currentTime + 0.08;
   const stops: (() => void)[] = [];
-  const voices = (song.second ? [0, 1] : [0]) as VoiceIndex[];
+  const voices = ((song.second ? [0, 1] : [0]) as VoiceIndex[]).filter((v) => !only || only.includes(v));
   // Per voice: start time and index of every scheduled note, and when the voice falls silent.
   const tracks = voices.map((v) => {
     const vs = voiceSong(song, v);
@@ -277,7 +277,8 @@ export function play(song: Song, from: number, onNote: (p: Playing) => void, onE
       while (k > 0 && times[k] > now) k--;
       return idx[k];
     });
-    const p: Playing = [cur[0] ?? null, cur[1] ?? null];
+    const p: Playing = [null, null];
+    voices.forEach((v, k) => (p[v] = cur[k] ?? null));
     const key = p.join();
     if (key !== last && (p[0] !== null || p[1] !== null)) onNote(p);
     last = key;

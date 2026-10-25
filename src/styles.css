@@ -109,6 +109,8 @@ main { flex: 1; min-height: 0; display: flex; position: relative; }
 .view-bar .edit-btn { margin-left: auto; color: var(--accent); font-weight: 500; }
 .toolbar .view-btn { color: var(--accent); font-weight: 500; }
 .toolbar .add-voice { color: var(--accent); }
+.play-voices { border: 0; border-radius: 16px; padding: 4px 8px; background: rgb(255 255 255 / 70%); }
+.view-bar .play-voices { background: var(--surface); padding: 6px 10px; }
 .segmented.voices button { width: 30px; font-weight: 600; }
 /* The voice not being edited steps back a little. */
 .voice.dim .note, .voice.dim .lyrics, .voice.dim .note-names { opacity: 0.45; }
