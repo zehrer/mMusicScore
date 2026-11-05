@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { deleteSong } from "../model/persist";
-import { addVoice, change, deleteSelection, redo, removeVoice, selectAll, setShowLibrary, setNameStyle, setShowNames, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, setShowRecorder, undo, useStore } from "../model/store";
+import { addVoice, change, deleteSelection, redo, removeVoice, selectAll, setShowLibrary, setNameStyle, setShowNames, setZoom, stepZoom, ZOOM_STEPS, setMeta, setShowPiano, setShowRecorder, setShowSections, undo, useStore } from "../model/store";
 import * as A from "./actions";
+import { enterFullscreen } from "./fullscreen";
 import { About, Shortcuts } from "./Dialogs";
 import { MenuList, type MenuItem } from "./Menu";
 
@@ -71,6 +72,8 @@ export function Header() {
       items: [
         { label: `${s.showLibrary ? "✓ " : "\u2003"}Song list`, action: () => setShowLibrary(!s.showLibrary) },
         { label: `${s.showPiano ? "✓ " : "\u2003"}Piano`, action: () => setShowPiano(!s.showPiano) },
+        { label: `${s.showSections ? "✓ " : "\u2003"}Sections`, action: () => setShowSections(!s.showSections) },
+        { label: "Full screen", action: enterFullscreen },
         { label: `${s.showRecorder ? "✓ " : "\u2003"}Recorder fingering`, action: () => setShowRecorder(!s.showRecorder) },
         { label: `${s.showNames ? "✓ " : "\u2003"}Note names`, action: () => setShowNames(!s.showNames) },
         { heading: "Note names" },

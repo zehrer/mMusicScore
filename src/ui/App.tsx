@@ -8,6 +8,7 @@ import { Library } from "./Library";
 import { MiniPlayer } from "./MiniPlayer";
 import { Piano } from "./Piano";
 import { Recorder } from "./Recorder";
+import { exitFullscreen, listenFullscreen } from "./fullscreen";
 import { Score } from "./Score";
 import { Toolbar } from "./Toolbar";
 import { ViewBar } from "./ViewBar";
@@ -77,6 +78,7 @@ function onKey(e: KeyboardEvent) {
       deleteSelection();
       return handled();
     case "Escape":
+      if (useStore.getState().fullscreen) return void exitFullscreen();
       return void select(null);
     case " ":
       return void (A.togglePlay(), handled());
@@ -92,25 +94,29 @@ function onKey(e: KeyboardEvent) {
 export function App() {
   const showPiano = useStore((s) => s.showPiano);
   const showRecorder = useStore((s) => s.showRecorder);
+  const showSections = useStore((s) => s.showSections);
+  const fullscreen = useStore((s) => s.fullscreen);
   const editing = useStore((s) => s.mode === "edit");
   const toast = useStore((s) => s.toast);
   const showLibrary = useStore((s) => s.showLibrary);
   useEffect(() => {
     addEventListener("keydown", onKey);
     const unlisten = A.listenClipboard();
+    const unlistenFull = listenFullscreen();
     return () => {
       removeEventListener("keydown", onKey);
       unlisten();
+      unlistenFull();
     };
   }, []);
   return (
-    <div className="app">
-      <Header />
+    <div className={`app${fullscreen ? " fullscreen" : ""}`}>
+      {!fullscreen && <Header />}
       {editing ? <Toolbar /> : <ViewBar />}
       <main>
-        {showLibrary && <Library />}
+        {showLibrary && !fullscreen && <Library />}
         <div className="editor">
-          {editing && <FormBar />}
+          {editing && showSections && <FormBar />}
           <div className="score-wrap">
             <Score />
             <MiniPlayer />

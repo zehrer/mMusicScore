@@ -1,21 +1,9 @@
-import { useEffect, useState } from "react";
 import { openSaved } from "../model/persist";
 import { hasSections, setMode, setShowNames, setShowRecorder, setView, setZoom, useStore } from "../model/store";
 import * as A from "./actions";
 import { NamesIcon, RecorderIcon } from "./icons";
 import { PlayVoicesSelect } from "./PlayVoices";
-
-/** Browser full screen, where pages may use it (not on iPhone). */
-function useFullscreen() {
-  const [on, setOn] = useState(!!document.fullscreenElement);
-  useEffect(() => {
-    const update = () => setOn(!!document.fullscreenElement);
-    document.addEventListener("fullscreenchange", update);
-    return () => document.removeEventListener("fullscreenchange", update);
-  }, []);
-  const toggle = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
-  return { available: !!document.fullscreenEnabled, on, toggle };
-}
+import { toggleFullscreen } from "./fullscreen";
 
 /**
  * The bar of view mode: pick a song, play it, and switch to editing. On phones the app starts
@@ -24,7 +12,6 @@ function useFullscreen() {
  */
 export function ViewBar() {
   const s = useStore();
-  const full = useFullscreen();
   const sectioned = hasSections(s.song);
   const known = s.songs.some((x) => x.id === s.song.id);
   return (
@@ -67,11 +54,9 @@ export function ViewBar() {
         <button className={`icon-btn${s.showRecorder ? " on" : ""}`} title="Recorder fingering" aria-label="Recorder fingering" onClick={() => setShowRecorder(!s.showRecorder)}>
           <RecorderIcon />
         </button>
-        {full.available && (
-          <button className={full.on ? "on" : ""} title={full.on ? "Leave full screen (Esc)" : "Full screen"} onClick={full.toggle}>
-            {full.on ? "Exit full screen" : "⛶ Full screen"}
-          </button>
-        )}
+        <button className={s.fullscreen ? "on" : ""} title={s.fullscreen ? "Leave full screen" : "Full screen: only the music and this bar"} onClick={toggleFullscreen}>
+          {s.fullscreen ? "Exit full screen" : "⛶ Full screen"}
+        </button>
         <button title={s.zoom === "page" ? "Fit the width" : "Show the whole page"} onClick={() => setZoom(s.zoom === "page" ? "width" : "page")}>
           {s.zoom === "page" ? "Fit width" : "Fit page"}
         </button>

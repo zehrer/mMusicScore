@@ -156,6 +156,9 @@ main { flex: 1; min-height: 0; display: flex; position: relative; }
 .form-chips .chip.add { cursor: pointer; padding: 3px 10px; color: var(--accent); }
 .form-hint { color: var(--muted); font-size: 12px; white-space: nowrap; }
 .form-bar .spacer { flex: 1; }
+.form-bar .form-close { border: 0; background: none; border-radius: 50%; width: 28px; height: 28px; font-size: 18px; line-height: 1; color: var(--muted); }
+.form-bar .form-close:hover { background: var(--hover); }
+.app.fullscreen .view-bar { margin-top: max(8px, env(safe-area-inset-top)); }
 .form-action { border: 0; background: none; border-radius: 14px; padding: 4px 10px; color: var(--accent); white-space: nowrap; }
 .form-action:hover:not(:disabled) { background: var(--accent-soft); }
 

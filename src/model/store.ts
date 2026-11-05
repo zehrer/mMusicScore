@@ -76,6 +76,10 @@ interface State {
   showPiano: boolean;
   /** Recorder fingering chart on the right, and the fingering it shows. */
   showRecorder: boolean;
+  /** Section and form bar above the score (edit mode). */
+  showSections: boolean;
+  /** Full screen: only the score and the play bar; also where the browser has no real full screen. */
+  fullscreen: boolean;
   fingering: FingeringSystem;
   /** Which voices playback plays when the song has two. */
   playVoices: PlayVoices;
@@ -117,6 +121,8 @@ export const useStore = create<State>(() => ({
   toast: null,
   showPiano: loadFlag("showPiano", true),
   showRecorder: loadFlag("showRecorder", false),
+  showSections: loadFlag("showSections", true),
+  fullscreen: false,
   fingering: loadFingering(),
   showLibrary: !isPhone() && loadFlag("showLibrary", true),
   playVoices: loadPlayVoices(),
@@ -148,7 +154,7 @@ function isPhone() {
 }
 
 export function setMode(mode: "view" | "edit") {
-  set({ mode, lyricEdit: null, ...(mode === "view" && { anchor: null }) });
+  set({ mode, ...(mode === "edit" && { fullscreen: false }), lyricEdit: null, ...(mode === "view" && { anchor: null }) });
 }
 
 /** Remembers a view setting in this browser; storage can be unavailable, then it is only kept for now. */
@@ -204,6 +210,12 @@ export function closeLibraryOnPhone() {
 export function setShowPiano(on: boolean) {
   set({ showPiano: on });
   remember("showPiano", on ? "1" : "0");
+}
+
+export function setShowSections(on: boolean) {
+  set({ showSections: on });
+  remember("showSections", on ? "1" : "0");
+  if (!on) showToast("Sections hidden – View → Sections shows them again");
 }
 
 export function setShowRecorder(on: boolean) {

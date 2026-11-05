@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { formOf, sectionRange, sectionsOf } from "../model/sections";
-import { changeForm, hasSections, newSection, removeSection, renameSectionTo, select, setView, splitAtSelection, useStore } from "../model/store";
+import { changeForm, hasSections, newSection, removeSection, renameSectionTo, select, setShowSections, setView, splitAtSelection, useStore } from "../model/store";
 import type { Song } from "../model/types";
 import { MenuList, type MenuItem } from "./Menu";
 
@@ -140,6 +140,9 @@ export function FormBar() {
         }}
       >
         ＋ New section
+      </button>
+      <button className="form-close" title="Hide sections (View → Sections shows them again)" aria-label="Hide sections" onClick={() => setShowSections(false)}>
+        ×
       </button>
       {menu && <MenuList items={menu.items} at={menu} onClose={() => setMenu(null)} />}
     </div>
