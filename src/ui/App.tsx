@@ -7,6 +7,7 @@ import { Header } from "./Header";
 import { Library } from "./Library";
 import { MiniPlayer } from "./MiniPlayer";
 import { Piano } from "./Piano";
+import { Recorder } from "./Recorder";
 import { Score } from "./Score";
 import { Toolbar } from "./Toolbar";
 import { ViewBar } from "./ViewBar";
@@ -90,6 +91,7 @@ function onKey(e: KeyboardEvent) {
 
 export function App() {
   const showPiano = useStore((s) => s.showPiano);
+  const showRecorder = useStore((s) => s.showRecorder);
   const editing = useStore((s) => s.mode === "edit");
   const toast = useStore((s) => s.toast);
   const showLibrary = useStore((s) => s.showLibrary);
@@ -130,6 +132,7 @@ export function App() {
           </div>
           {editing && showPiano && <Piano />}
         </div>
+        {showRecorder && <Recorder />}
       </main>
     </div>
   );

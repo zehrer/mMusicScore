@@ -1,10 +1,10 @@
 import { DURATION_NAMES, DURATIONS, KEY_NAMES, pitchName, resolveAccidentals } from "../model/music";
-import { addVoice, editLyric, redo, setMode, setVoice, setVoiceMeta, setDuration, setMeta, setShowNames, setShowPiano, setZoom, stepZoom, ZOOM_STEPS, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
+import { addVoice, editLyric, redo, setMode, setVoice, setVoiceMeta, setDuration, setMeta, setShowNames, setShowPiano, setShowRecorder, setZoom, stepZoom, ZOOM_STEPS, toggleAlter, toggleDot, toggleRest, undo, useStore } from "../model/store";
 import type { Alter, Instrument } from "../model/types";
 import { instrumentOf, voiceSong } from "../model/voices";
 import * as A from "./actions";
 import { ACCIDENTAL, NOTE_ICON, REST } from "./glyphs";
-import { LyricsIcon, NamesIcon, PianoIcon } from "./icons";
+import { LyricsIcon, NamesIcon, PianoIcon, RecorderIcon } from "./icons";
 import { MOD } from "./actions";
 import { PlayVoicesSelect } from "./PlayVoices";
 
@@ -84,6 +84,9 @@ export function Toolbar() {
       </button>
       <button className={`icon-btn${s.showPiano ? " on" : ""}`} title="Piano" aria-label="Piano" onClick={() => setShowPiano(!s.showPiano)}>
         <PianoIcon />
+      </button>
+      <button className={`icon-btn${s.showRecorder ? " on" : ""}`} title="Recorder fingering" aria-label="Recorder fingering" onClick={() => setShowRecorder(!s.showRecorder)}>
+        <RecorderIcon />
       </button>
       <span className="sep" />
       <button className={`play${s.isPlaying ? " on" : ""}`} title="Play / stop (Space)" disabled={!hasNotes} onClick={A.togglePlay}>

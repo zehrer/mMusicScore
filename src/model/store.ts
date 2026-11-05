@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { clampPitch, emptySong, midi, nearestPitch, newId, resolveAccidentals, type NameStyle } from "./music";
 import { auditionWith } from "./playback";
+import type { FingeringSystem } from "./recorder";
 import { addSecondVoice, instrumentOf, removeSecondVoice, voiceSong, withVoice, type VoiceIndex } from "./voices";
 import { addSection, deleteSection, renameSection, sectionsOf, setForm, splitSection, verseOf, withVerse } from "./sections";
 import type { Alter, Duration, NoteEvent, Song, SongInfo } from "./types";
@@ -73,6 +74,9 @@ interface State {
   /** Short notice at the bottom, optionally with an Undo button. */
   toast: { text: string; undo?: boolean } | null;
   showPiano: boolean;
+  /** Recorder fingering chart on the right, and the fingering it shows. */
+  showRecorder: boolean;
+  fingering: FingeringSystem;
   /** Which voices playback plays when the song has two. */
   playVoices: PlayVoices;
   /** The song list on the left; on phones it slides in over the music. */
@@ -112,6 +116,8 @@ export const useStore = create<State>(() => ({
   dialog: null,
   toast: null,
   showPiano: loadFlag("showPiano", true),
+  showRecorder: loadFlag("showRecorder", false),
+  fingering: loadFingering(),
   showLibrary: !isPhone() && loadFlag("showLibrary", true),
   playVoices: loadPlayVoices(),
   showNames: loadFlag("showNames", false),
@@ -198,6 +204,24 @@ export function closeLibraryOnPhone() {
 export function setShowPiano(on: boolean) {
   set({ showPiano: on });
   remember("showPiano", on ? "1" : "0");
+}
+
+export function setShowRecorder(on: boolean) {
+  set({ showRecorder: on });
+  remember("showRecorder", on ? "1" : "0");
+}
+
+export function setFingering(system: FingeringSystem) {
+  set({ fingering: system });
+  remember("fingering", system);
+}
+
+function loadFingering(): FingeringSystem {
+  try {
+    return localStorage.getItem("fingering") === "german" ? "german" : "baroque";
+  } catch {
+    return "baroque";
+  }
 }
 
 export function setShowNames(on: boolean) {

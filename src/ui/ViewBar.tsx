@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { openSaved } from "../model/persist";
-import { hasSections, setMode, setShowNames, setView, setZoom, useStore } from "../model/store";
+import { hasSections, setMode, setShowNames, setShowRecorder, setView, setZoom, useStore } from "../model/store";
 import * as A from "./actions";
-import { NamesIcon } from "./icons";
+import { NamesIcon, RecorderIcon } from "./icons";
 import { PlayVoicesSelect } from "./PlayVoices";
 
 /** Browser full screen, where pages may use it (not on iPhone). */
@@ -63,6 +63,9 @@ export function ViewBar() {
         )}
         <button className={`icon-btn${s.showNames ? " on" : ""}`} title="Note names" aria-label="Note names" onClick={() => setShowNames(!s.showNames)}>
           <NamesIcon />
+        </button>
+        <button className={`icon-btn${s.showRecorder ? " on" : ""}`} title="Recorder fingering" aria-label="Recorder fingering" onClick={() => setShowRecorder(!s.showRecorder)}>
+          <RecorderIcon />
         </button>
         {full.available && (
           <button className={full.on ? "on" : ""} title={full.on ? "Leave full screen (Esc)" : "Full screen"} onClick={full.toggle}>

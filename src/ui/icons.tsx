@@ -31,3 +31,13 @@ export const PianoIcon = () => (
     <path d="M6 4v6.5M10 4v6.5M14 4v6.5" strokeWidth="3.2" strokeLinecap="butt" />
   </Svg>
 );
+
+/** Recorder: a pipe with finger holes. */
+export const RecorderIcon = () => (
+  <Svg>
+    <path d="M7.5 2.5h5l-.6 15h-3.8z" />
+    <circle cx="10" cy="7" r=".9" fill="currentColor" stroke="none" />
+    <circle cx="10" cy="10" r=".9" fill="currentColor" stroke="none" />
+    <circle cx="10" cy="13" r=".9" fill="currentColor" stroke="none" />
+  </Svg>
+);
