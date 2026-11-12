@@ -188,6 +188,9 @@ main { flex: 1; min-height: 0; display: flex; position: relative; }
 .piano .key:active rect, .piano .lit rect { fill: var(--accent-soft); }
 .piano .black.lit rect, .piano .black:active rect { fill: var(--accent); }
 .piano text { font-size: 9px; fill: var(--muted); pointer-events: none; }
+.piano text.name { font-size: 7px; fill: #9aa0a6; }
+.piano .black text.name { font-size: 5.5px; fill: #bdc1c6; }
+.piano .black.lit text.name, .piano .black:active text.name { fill: #fff; }
 
 /* --- iPad: touch pad above the piano, bigger keys, note bar at the selected note --- */
 .touch-pad { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; padding: 8px 12px 0; background: #f1f3f4; border-top: 1px solid var(--line); }
