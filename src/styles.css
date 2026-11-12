@@ -189,6 +189,36 @@ main { flex: 1; min-height: 0; display: flex; position: relative; }
 .piano .black.lit rect, .piano .black:active rect { fill: var(--accent); }
 .piano text { font-size: 9px; fill: var(--muted); pointer-events: none; }
 
+/* --- iPad: touch pad above the piano, bigger keys, note bar at the selected note --- */
+.touch-pad { flex: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 14px; padding: 8px 12px 0; background: #f1f3f4; border-top: 1px solid var(--line); }
+.touch-pad .group { display: flex; gap: 4px; background: var(--surface); border-radius: 12px; padding: 3px; }
+.touch-pad button, .note-bar button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-width: 48px; height: 48px; padding: 0 8px;
+  border: 0; border-radius: 10px; background: none; font-size: 20px; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.touch-pad button.wide { min-width: 76px; font-size: 18px; }
+.touch-pad button:active:not(:disabled), .note-bar button:active:not(:disabled) { background: var(--hover); }
+.touch-pad button.on, .note-bar button.on { background: var(--accent-soft); color: #041e49; }
+.touch-pad + .piano { border-top: 0; }
+.piano.touch { padding-top: 10px; }
+.piano.touch svg { flex: 1 1 auto; width: 100%; max-width: 1100px; height: auto; max-height: 190px; }
+.piano.touch text { font-size: 10px; }
+.piano.touch .white:hover rect { fill: #fff; }
+.piano.touch .black:hover rect { fill: #2d2f31; }
+.piano.touch .key:active rect { fill: var(--accent-soft); }
+.piano.touch .black:active rect { fill: var(--accent); }
+.score.touch { position: relative; }
+.score.touch .hit-note { touch-action: manipulation; }
+.note-bar {
+  position: absolute; z-index: 5; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 4px;
+  background: var(--surface); border-radius: 14px; box-shadow: 0 2px 6px rgb(60 64 67 / 30%), 0 8px 24px rgb(60 64 67 / 18%);
+  white-space: nowrap; animation: bar-in 0.12s ease-out;
+}
+.note-bar .sep { width: 1px; height: 28px; background: var(--line); margin: 0 3px; }
+.note-bar small { font-size: 11px; }
+.note-bar .danger { color: var(--playing); }
+@keyframes bar-in { from { opacity: 0; transform: translate(-50%, 6px); } }
+
 @keyframes slide-in { from { transform: translateX(-100%); } }
 
 .toast {

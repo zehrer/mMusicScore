@@ -25,6 +25,7 @@ Live: https://zehrer.github.io/mMusicScore/
 - **HTML export** (File → Export song as HTML): a single file that shows the score in any browser and plays it (▶ Play, or click a note to start there). Its **Open in mMusicScore** button adds the song to the app again; File → Import also reads the file.
 - **Print / PDF** via File → Print; only the score pages are printed.
 
+- **iPad**: notes are edited by touch. A tap on a note selects it and a bar below it changes it with big buttons (▲ ▼ step, 8▲ 8▼ octave, ♯ ♭ ♮, delete, ✕ done); a tap on the staff puts the cursor there. Above the piano (bigger keys on iPad) a touch pad holds ◀ ▶ (previous / next note), note values, dot, rest, ⌫ and undo / redo. Notes are entered with the piano keys. `?touch=1` in the address turns this on elsewhere, `?touch=0` off.
 - **Full screen** (⛶ in view mode, or View → Full screen): only the score and the play bar remain; where the browser allows it (desktop, iPad) the page also fills the whole screen. On iPhone the app's own bars go away; for no browser bars at all, use Share → Add to Home Screen. Exit full screen or Esc leaves it.
 - **View mode**: a slim bar with a big **▶ Play** (plus song choice and ＋ New while the song list is hidden, and ⛶ Full screen); tap a note to play from there. Phones start in it, ✎ Edit switches to all tools (and View back). On iPhone, playback also works with the ring/silent switch on (iOS 17 and later; older versions use a silent audio element for the same effect).
 

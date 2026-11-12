@@ -35,6 +35,7 @@ export function Piano() {
   const voice = useStore((s) => s.voice);
   const song = voiceSong(whole, voice);
   const sel = useStore((s) => s.sel);
+  const touchUI = useStore((s) => s.touchUI);
   const playing1 = useStore(playingHere);
   const playing2 = useStore(playingHere2);
   const playingSong = useStore((s) => s.playingSong);
@@ -54,7 +55,7 @@ export function Piano() {
   const width = 22 * WHITE_W;
 
   return (
-    <div className="piano">
+    <div className={`piano${touchUI ? " touch" : ""}`}>
       <svg viewBox={`0 0 ${width + 1} ${WHITE_H + 1}`} width={width + 1} height={WHITE_H + 1} role="group" aria-label="Piano">
         {all.map((k) => (
           <g
