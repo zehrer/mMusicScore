@@ -1,4 +1,4 @@
-import { midi, octave, resolveAccidentals, step } from "../model/music";
+import { midi, noteLabel, octave, resolveAccidentals, step } from "../model/music";
 import { insertPitch, playingHere, playingHere2, useStore } from "../model/store";
 import { voiceSong } from "../model/voices";
 import type { Alter } from "../model/types";
@@ -36,6 +36,8 @@ export function Piano() {
   const song = voiceSong(whole, voice);
   const sel = useStore((s) => s.sel);
   const touchUI = useStore((s) => s.touchUI);
+  // With note names shown above the staff, the keys are labelled too (C keys keep their octave).
+  const names = useStore((s) => (s.showNames ? s.nameStyle : null));
   const playing1 = useStore(playingHere);
   const playing2 = useStore(playingHere2);
   const playingSong = useStore((s) => s.playingSong);
@@ -70,6 +72,16 @@ export function Piano() {
             {!k.black && step(k.pitch) === 0 && (
               <text x={k.x + WHITE_W / 2 + 0.5} y={WHITE_H - 8} textAnchor="middle">
                 C{octave(k.pitch)}
+              </text>
+            )}
+            {names && !(k.black || step(k.pitch) === 0) && (
+              <text className="name" x={k.x + WHITE_W / 2 + 0.5} y={WHITE_H - 8} textAnchor="middle">
+                {noteLabel(k.pitch, k.alter, names)}
+              </text>
+            )}
+            {names && k.black && (
+              <text className="name" x={k.x + BLACK_W / 2 + 0.5} y={BLACK_H - 6} textAnchor="middle">
+                {noteLabel(k.pitch, k.alter, names)}
               </text>
             )}
           </g>
