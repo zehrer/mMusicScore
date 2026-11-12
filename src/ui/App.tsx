@@ -11,6 +11,7 @@ import { Recorder } from "./Recorder";
 import { exitFullscreen, listenFullscreen } from "./fullscreen";
 import { Score } from "./Score";
 import { Toolbar } from "./Toolbar";
+import { TouchPad } from "./TouchPad";
 import { ViewBar } from "./ViewBar";
 
 /** Note names; H is accepted as B, as in German. */
@@ -97,6 +98,7 @@ export function App() {
   const showSections = useStore((s) => s.showSections);
   const fullscreen = useStore((s) => s.fullscreen);
   const editing = useStore((s) => s.mode === "edit");
+  const touchUI = useStore((s) => s.touchUI);
   const toast = useStore((s) => s.toast);
   const showLibrary = useStore((s) => s.showLibrary);
   useEffect(() => {
@@ -136,7 +138,8 @@ export function App() {
               </div>
             )}
           </div>
-          {editing && showPiano && <Piano />}
+          {editing && touchUI && <TouchPad />}
+          {editing && (showPiano || touchUI) && <Piano />}
         </div>
         {showRecorder && <Recorder />}
       </main>

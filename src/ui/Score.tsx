@@ -1,13 +1,14 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from "react";
 import { insertIndex, keyWidth, layoutScore, staffOf, PAGE_H, PAGE_W, pitchY, S, VERSE_DY, yPitch, type SystemLayout } from "../model/layout";
 import { BOTTOM_LINE, clampPitch, keySignaturePitches, middleLine, noteLabel, pitchName, type NameStyle, type Resolved } from "../model/music";
 import { expand, formOf, sectionRange, sectionsOf, verseOf } from "../model/sections";
-import { auditionAt, cur, deleteLast, editLyric, hasSections, insertNote, playingHere, playingHere2, recordUndo, select, selRange, setLyric, setVoice, updateNote, useStore } from "../model/store";
+import { auditionAt, cur, deleteLast, placeCursor, editLyric, hasSections, insertNote, playingHere, playingHere2, recordUndo, select, selRange, setLyric, setVoice, updateNote, useStore } from "../model/store";
 import { voiceSong, type VoiceIndex } from "../model/voices";
 import type { Alter, Duration, NoteEvent, Song } from "../model/types";
 import { playFrom } from "./actions";
 import { follow } from "./follow";
 import { ACCIDENTAL, G, REST } from "./glyphs";
+import { NoteBar } from "./NoteBar";
 
 export const HEAD_W = (dur: Duration) => (dur === 1 ? 1.69 * S : 1.18 * S);
 const LINE = 0.13 * S;
@@ -34,6 +35,7 @@ export function Score() {
   const playingSrc2 = useStore((s) => s.playingSrc2);
   const view = useStore((s) => s.view);
   const editing = useStore((s) => s.mode === "edit");
+  const touchUI = useStore((s) => s.touchUI);
   const root = useRef<HTMLDivElement>(null);
   const zoomMode = useStore((s) => s.zoom);
   const [box, setBox] = useState({ w: 0, h: 0 });
@@ -121,6 +123,19 @@ export function Score() {
     lastLine.current = line;
   }, [sel, playing1, playing2, layout, zoom]);
 
+  // iPad: the note bar sits below the staff of the selected note.
+  const [barAt, setBarAt] = useState<{ x: number; y: number } | null>(null);
+  const showBar = touchUI && editing && sel !== null && !anyPlaying && lyricEdit === null;
+  useLayoutEffect(() => {
+    const box = root.current;
+    const note = showBar ? box?.querySelector(".note.cur") : null;
+    if (!box || !note) return setBarAt(null);
+    const area = (note.parentElement?.querySelector(".highlight") ?? note).getBoundingClientRect();
+    const head = note.getBoundingClientRect();
+    const b = box.getBoundingClientRect();
+    setBarAt({ x: head.left + head.width / 2 - b.left + box.scrollLeft, y: area.bottom - b.top + box.scrollTop + 6 });
+  }, [showBar, sel, voice, layout, zoom, box, song]);
+
   /** Song index and section a click into staff `ss` of voice `v` inserts at. */
   const insertAt = (ss: SystemLayout, x: number, p: (typeof per)[number]): [number, string | undefined] => {
     const sec = song.sections?.length ? ss.section.split("~")[0] : undefined;
@@ -130,7 +145,8 @@ export function Score() {
     return [sec ? sectionRange(p.written, sec)[1] : ss.start, sec];
   };
   const onMove = (e: RPointerEvent, ss: SystemLayout, v: VoiceIndex) => {
-    if (drag.current) return;
+    // No preview on touch: there is no pointer hovering before the tap.
+    if (drag.current || touchUI || e.pointerType === "touch") return;
     const p = svgPoint(e, e.currentTarget);
     setHover({ sys: ss, v, x: p.x, pitch: clampPitch(yPitch(ss, p.y, BOTTOM_LINE[per[v].vs.clef])) });
   };
@@ -138,6 +154,7 @@ export function Score() {
     const p = svgPoint(e, e.currentTarget);
     setVoice(v);
     const [index, sec] = insertAt(ss, p.x, per[v]);
+    if (touchUI) return placeCursor(index);
     insertNote(index, clampPitch(yPitch(ss, p.y, BOTTOM_LINE[per[v].vs.clef])), undefined, sec);
   };
 
@@ -149,7 +166,8 @@ export function Score() {
     setVoice(v, i);
     auditionAt(i);
     const n = per[v].written.notes[i];
-    if (!n.rest) drag.current = { i, y0: svgPoint(e, e.currentTarget).y, pitch0: n.pitch, recorded: false };
+    // iPad: a tap only selects; the note bar changes the pitch, and the sheet keeps scrolling.
+    if (!n.rest && !touchUI) drag.current = { i, y0: svgPoint(e, e.currentTarget).y, pitch0: n.pitch, recorded: false };
   };
   const onNoteMove = (e: RPointerEvent) => {
     const d = drag.current;
@@ -295,7 +313,7 @@ export function Score() {
   };
 
   return (
-    <div className={`score${editing ? "" : " viewing"}`} ref={root} onPointerLeave={() => setHover(null)} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+    <div className={`score${editing ? "" : " viewing"}${touchUI ? " touch" : ""}`} ref={root} onPointerLeave={() => setHover(null)} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
       {layout.pages.map((systems, pi) => (
         <svg
           key={pi}
@@ -315,7 +333,7 @@ export function Score() {
           ))}
           {pi === 0 && !song.notes.length && !song.second?.notes.length && (
             <text className="hint edit-only" x={PAGE_W / 2} y={systems[0].y + 9 * S} textAnchor="middle">
-              Click on the staff or type the letters A–G to enter notes
+              {touchUI ? "Tap the piano keys below to enter notes" : "Click on the staff or type the letters A–G to enter notes"}
             </text>
           )}
           {pi === 0 && expanded && !dsong.notes.length && song.notes.length > 0 && (
@@ -328,6 +346,7 @@ export function Score() {
           </text>
         </svg>
       ))}
+      {barAt && <NoteBar x={barAt.x} y={barAt.y} />}
     </div>
   );
 }

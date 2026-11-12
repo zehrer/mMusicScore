@@ -64,6 +64,8 @@ interface State {
   playingSrc2: number[] | null;
   /** View: read and play only, with a slim bar (the default on phones). Edit: all tools. */
   mode: "view" | "edit";
+  /** iPad: touch editing (note bar and touch pad) instead of mouse gestures. */
+  touchUI: boolean;
   /** Compact: each section once, as written. Expanded: the form written out. */
   view: "compact" | "expanded";
   /** Chosen zoom: a factor, or fit the page width / the whole page into the window. */
@@ -114,6 +116,7 @@ export const useStore = create<State>(() => ({
   playing2: null,
   playingSrc2: null,
   mode: isPhone() ? "view" : "edit",
+  touchUI: isTablet(),
   view: loadFlag("expanded", false) ? "expanded" : "compact",
   zoom: loadZoom(),
   viewZoom: 1,
@@ -141,6 +144,21 @@ function loadFlag(key: string, def: boolean) {
     return v === null ? def : v === "1";
   } catch {
     return def;
+  }
+}
+
+/**
+ * iPad: notes are edited with a bar at the selected note and a touch pad above the piano instead of
+ * mouse gestures. iPadOS Safari presents itself as a Mac, so it is told apart by its touch points.
+ * `?touch=1` / `?touch=0` in the address forces it on or off (for trying it on a desktop).
+ */
+function isTablet() {
+  try {
+    const force = new URLSearchParams(location.search).get("touch");
+    if (force !== null) return force === "1";
+    return /iPad/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  } catch {
+    return false;
   }
 }
 
@@ -558,6 +576,23 @@ export function select(i: number | null, extend = false) {
   if (extend && n && sel !== null) return set({ sel: i, anchor: anchor ?? sel });
   // The toolbar reflects the selected note, so the next note continues with its value.
   set({ sel: n ? i : null, anchor: null, ...(n && { input: { ...input, dur: n.dur, dots: n.dots ?? 0, rest: !!n.rest } }) });
+}
+
+/** Moves the selection one note left (-1) or right (1) in the voice being edited. */
+export function stepSelection(dir: -1 | 1) {
+  const len = cur().notes.length;
+  const { sel } = get();
+  if (!len) return;
+  select(sel === null ? (dir < 0 ? len - 1 : 0) : Math.max(0, Math.min(len - 1, sel + dir)));
+  auditionAt(get().sel!);
+}
+
+/**
+ * Touch: a tap on the staff puts the cursor there instead of entering a note; the note before
+ * the tap becomes the selection, so the next note goes in at that place.
+ */
+export function placeCursor(index: number) {
+  select(index > 0 ? index - 1 : null);
 }
 
 export function selectAll() {
